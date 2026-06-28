@@ -1,0 +1,26 @@
+# 00 開発チケット索引
+
+`REQUIREMENTS.md`（Phase 1 / MVP 仕様）を機能単位に分割したチケット群。番号は**おおよその実装順（依存順）**。各ファイル内の `## Todo` を進捗管理に使う（`- [ ]` → 完了で `- [×]`）。
+
+## 一覧
+
+| No | チケット | 概要 | 主依存 |
+|----|----------|------|--------|
+| 01 | [プロジェクト基盤・環境変数](./01-project-foundation.md) | env・ディレクトリ構成・共通定数・`withRetry` | — |
+| 02 | [Supabase データモデル](./02-supabase-data-model.md) | `playthroughs` / `state` / `messages`・クライアント | 01 |
+| 03 | [映像取り込みモジュール](./03-video-capture.md) | OBS仮想カメラ・`getUserMedia`・デバイス選択・プレビュー | 01 |
+| 04 | [自動実況ループ](./04-auto-narration-loop.md) | フレーム取得・ダウンスケール・変化検知・送信制御 | 03 |
+| 05 | [知識ファイル](./05-knowledge-files.md) | FEプライマー・章キャスト表・章単位ローダー | 01 |
+| 06 | [戦友ペルソナ／プロンプト](./06-persona-prompt.md) | システムプロンプト組み立て | 05 |
+| 07 | [実況API `/api/narrate`](./07-narrate-api.md) | Gemini(Vision) ストリーミング | 02,05,06 |
+| 08 | [TTS `/api/tts` と `useTts`](./08-tts.md) | Cloud TTS・逐次再生キュー | 01 |
+| 09 | [トップ画面・プレイスルー管理](./09-top-playthrough.md) | 一覧・新規作成 | 02 |
+| 10 | [セッション画面（統合UI）](./10-session-screen.md) | プレビュー＋自動/手動＋表示＋読み上げ | 03,04,07,08 |
+| 11 | [録画モードUI](./11-recording-mode.md) | 会話以外を隠す・全幅・文字サイズ | 10 |
+| 12 | [state更新 `/api/end-session`（任意）](./12-end-session.md) | 継続性・前回あらすじ | 02,07 |
+| 13 | [STT（任意）](./13-stt.md) | Web Speech でAIに話しかける | 10 |
+
+## 進め方
+
+- MVP の最短経路は **01→02→03→04→05→06→07→08→10**。09・11 は UX 仕上げ、12・13 は任意。
+- `REQUIREMENTS.md §5.2 / §12` の「やらないこと」は全チケット共通の強い制約。先読み実装をしない。
