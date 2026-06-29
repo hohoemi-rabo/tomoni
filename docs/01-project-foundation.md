@@ -8,13 +8,13 @@
 
 ## Todo
 
-- [ ] `.env.local` の雛形（`.env.example`）を用意（`GEMINI_API_KEY`・`GOOGLE_TTS_API_KEY`、Supabase接続情報）
-- [ ] サーバ専用キーを型安全に読む `src/lib/env.ts`（`NEXT_PUBLIC_` を付けない／未設定時に明示エラー）
-- [ ] ディレクトリ構成を作成（`src/lib`・`src/components`・`src/app/api`・`knowledge/fe-fc`）
-- [ ] 調整可能な定数を `src/lib/config.ts` に集約（自動間隔・変化しきい値・ダウンスケール長辺px・直近発言保持件数・既定ボイス）
-- [ ] `withRetry`（指数バックオフ・最大3回）を `src/lib/retry.ts` に実装
-- [ ] 共通の型定義 `src/lib/types.ts`（`Playthrough`・`State`・`Persona`・`NarrateRequest` など最小）
-- [ ] `npm run lint` / `npm run build` が通ることを確認
+- [×] `.env.local` の雛形（`.env.example`）を用意（`GEMINI_API_KEY`・`GOOGLE_TTS_API_KEY`、Supabase接続情報）
+- [×] サーバ専用キーを型安全に読む `src/lib/env.ts`（`NEXT_PUBLIC_` を付けない／未設定時に明示エラー）
+- [×] ディレクトリ構成を作成（`src/lib`・`src/components`・`src/app/api`・`knowledge/fe-fc`）
+- [×] 調整可能な定数を `src/lib/config.ts` に集約（自動間隔・変化しきい値・ダウンスケール長辺px・直近発言保持件数・既定ボイス）
+- [×] `withRetry`（指数バックオフ・最大3回）を `src/lib/retry.ts` に実装
+- [×] 共通の型定義 `src/lib/types.ts`（`Playthrough`・`State`・`Persona`・`NarrateRequest` など最小）
+- [×] `npm run lint` / `npm run build` が通ることを確認
 
 ## 完了条件
 
