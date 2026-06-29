@@ -33,6 +33,21 @@ export const RECENT_LINES_KEEP = 5;
 /** 既定の読み上げボイス（Chirp3-HD・日本語）。調整可能。 */
 export const DEFAULT_TTS_VOICE = "ja-JP-Chirp3-HD-Aoede";
 
+/**
+ * ボイス選択UI用の候補（Chirp3-HD・ja-JP）。`DEFAULT_TTS_VOICE` を含む。
+ * Chirp3-HD は言語をまたいで同じキャラクター名を使う。疎通しない名前が出たら除外する。
+ */
+export const TTS_VOICES = [
+  "ja-JP-Chirp3-HD-Aoede",
+  "ja-JP-Chirp3-HD-Kore",
+  "ja-JP-Chirp3-HD-Leda",
+  "ja-JP-Chirp3-HD-Zephyr",
+  "ja-JP-Chirp3-HD-Puck",
+  "ja-JP-Chirp3-HD-Charon",
+  "ja-JP-Chirp3-HD-Fenrir",
+  "ja-JP-Chirp3-HD-Orus",
+] as const;
+
 /** 画面実況（Vision・主役）に使う Gemini モデル。 */
 export const GEMINI_NARRATE_MODEL = "gemini-2.5-flash";
 

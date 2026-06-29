@@ -57,7 +57,7 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 
 ### 現在の実装状況（モジュール地図）
 
-完了チケット 01〜07。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
+完了チケット 01〜08。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
 
 - **基盤（01）**: `src/lib/env.ts`（サーバ専用キーの遅延検証アクセサ）・`src/lib/config.ts`（調整可能な定数を一元管理）・`src/lib/retry.ts`（`withRetry`・指数バックオフ）・`src/lib/types.ts`（`State`/`Persona`/`Playthrough`/`Message`/`NarrateRequest`）。
 - **データ層（02）**: `src/lib/supabase.ts`（`server-only` クライアント）・`src/lib/playthroughs.ts`（CRUD＋`state` 部分更新）・`src/lib/persona.ts`（`DEFAULT_PERSONA`）。
@@ -66,8 +66,9 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 - **知識（05）**: 上記 `knowledge/fe-fc/` と `src/lib/knowledge.ts`。
 - **プロンプト（06）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。
 - **実況API（07）**: `src/lib/gemini.ts`（`server-only` の遅延クライアント `getGeminiClient`＋全カテゴリ `BLOCK_NONE` の `SAFETY_SETTINGS_BLOCK_NONE`。07/12 で共有）・`src/app/api/narrate/route.ts`（入力検証→state/persona取得→知識読込→06でプロンプト→`gemini-2.5-flash` の `generateContentStream` を `ReadableStream` で返す。確立のみ `withRetry`、開始前エラーは `{ error }` JSON）。`@google/genai` 導入済み。
-- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04 の手動確認用ハーネス。**ticket 10 で本セッション画面に置き換える前提**の暫定物。
-- 未着手: 08（TTS）・09（トップ）・10（セッション画面）・11（録画モード）・12/13（任意）。
+- **TTS（08）**: `src/lib/sentence.ts`（`takeSentences`・純関数の文末分割）・`src/app/api/tts/route.ts`（Cloud TTS REST 直叩き→`{ audioBase64 }`・`withRetry`・`{ error }` JSON）・`src/hooks/useTts.ts`（`'use client'`・`feed`/`flush`/`reset`＋1文先読みパイプライン再生キュー・ON/OFF・ボイス選択）。ボイス候補は `config.ts` の `TTS_VOICES`。
+- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。**ticket 10/11 で本セッション画面に折り込む前提**の暫定物。
+- 未着手: 09（トップ）・10（セッション画面）・11（録画モード）・12/13（任意）。
 
 ## Next.js 15（App Router）ベストプラクティス
 
