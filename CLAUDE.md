@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **ともに / Tomoni** — 苦手なシミュレーションRPGを、画面を見て実況・昔話・励ましをしてくれる「戦友AI」と一緒にクリアを目指す**自分専用ツール**。最終成果物は YouTube 動画で、アプリはその道具。題材は MVP では **ファミコン版『ファイアーエムブレム 暗黒竜と光の剣』（1990 / FE1）の1本特化**。認証・公開・デプロイは無く、開発者のローカルPCで完結する。
 
-現状はまだ `create-next-app` の雛形のみ。`REQUIREMENTS.md` が **Phase 1（MVP）の実装指示書**であり、実装の唯一の信頼できる仕様。コンセプト・スコープ・データモデル・API設計はすべて `REQUIREMENTS.md` を一次情報として参照すること。
+`REQUIREMENTS.md` が **Phase 1（MVP）の実装指示書**であり、実装の唯一の信頼できる仕様。コンセプト・スコープ・データモデル・API設計はすべて `REQUIREMENTS.md` を一次情報として参照すること。
+
+**実装の進捗は `docs/00-index.md` のチケット No.（01〜13）と各チケットの `## Todo` で管理する**。完了チケットの再実装や、未完チケットの先読み実装をしないこと。現状は下記「現在の実装状況」を参照。
 
 ## 開発チケットと Todo 運用
 
@@ -25,12 +27,12 @@ npm run start   # ビルド済みを起動
 npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 ```
 
-テストフレームワークはまだ導入されていない。
+テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存（映像取り込み・自動ループ）は開発者が `/capture-test` で手動確認。
 
 ## 技術スタック
 
 - **Next.js 15（App Router）+ React 19 + TypeScript（strict）**、Tailwind CSS v3.4。`@/*` は `src/*` にエイリアス。
-- **DB**: Supabase（`@supabase/supabase-js`・RLS/認証なし・ローカル単一ユーザー）— 未導入。
+- **DB**: Supabase（`@supabase/supabase-js`・RLS/認証なし・ローカル単一ユーザー）。導入済み。専用プロジェクト `tomoni`（ref `enwzuxfufsnvghivcyut`・ap-northeast-1）。スキーマは `supabase/migrations/0001_init.sql`。接続情報は `.env.local`（`SUPABASE_URL` / `SUPABASE_ANON_KEY`・git 管理外）。
 - **AI**: Google Gen AI SDK（`@google/genai`）。画面実況（Vision・主役）は `gemini-2.5-flash`、任意の state 更新は `gemini-2.5-flash-lite`。`thinkingConfig.thinkingBudget: 0`（テンポ優先）、`safetySettings` 全カテゴリ `BLOCK_NONE`（戦闘・戦死で空応答にならないため）。一時エラーは `withRetry`（指数バックオフ・最大3回）。
 - **音声合成**: Google Cloud Text-to-Speech を REST 直叩き（Chirp3-HD ボイス）。
 - **APIキーはすべてサーバ専用**。`GEMINI_API_KEY` / `GOOGLE_TTS_API_KEY` を使い、`NEXT_PUBLIC_` を絶対に付けない。
@@ -48,10 +50,23 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 ### 知識ファイル `knowledge/fe-fc/`（攻略データではない）
 
 AIの**感情・反応を正しくする前提**と**今この章に誰がいるか**の最小限。2階建て:
-- `fe-primer.md` — 全章共通プライマー1枚。システムプロンプト先頭に固定（本リポジトリのルートに既存）。
-- `chapters/chapter-XX.md` — 章ごとのキャスト表（ゼロ埋め番号）。`state.chapter` に対応する**1ファイルだけ**注入する（全章一括注入はネタバレ＆トークン肥大）。番号で引くだけの最小リトリーバル。
+- `knowledge/fe-fc/fe-primer.md` — 全章共通プライマー1枚。システムプロンプト先頭に固定。
+- `knowledge/fe-fc/chapters/chapter-XX.md` — 章ごとのキャスト表（ゼロ埋め番号）。`state.chapter` に対応する**1ファイルだけ**注入する（全章一括注入はネタバレ＆トークン肥大）。番号で引くだけの最小リトリーバル。ローダーは `src/lib/knowledge.ts`（`loadPrimer` / `loadChapterCast`）。作り方は `knowledge/fe-fc/README.md`（§8.4 スクショ→名簿化）。
 
 データモデル（Supabase `playthroughs` / 緩い `state` jsonb / 任意の `messages`）は `REQUIREMENTS.md §9` 参照。
+
+### 現在の実装状況（モジュール地図）
+
+完了チケット 01〜06。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
+
+- **基盤（01）**: `src/lib/env.ts`（サーバ専用キーの遅延検証アクセサ）・`src/lib/config.ts`（調整可能な定数を一元管理）・`src/lib/retry.ts`（`withRetry`・指数バックオフ）・`src/lib/types.ts`（`State`/`Persona`/`Playthrough`/`Message`/`NarrateRequest`）。
+- **データ層（02）**: `src/lib/supabase.ts`（`server-only` クライアント）・`src/lib/playthroughs.ts`（CRUD＋`state` 部分更新）・`src/lib/persona.ts`（`DEFAULT_PERSONA`）。
+- **映像取り込み（03）**: `src/lib/video/types.ts`（`VideoSource` 抽象）・`src/lib/video/userMediaSource.ts`（`getUserMedia` 実装）・`src/components/VideoPreview.tsx`（`'use client'` プレビュー・`onVideoElement`/`onStreamChange` で親へ受け渡し）。
+- **自動実況ループ（04）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・変化検知ゲート・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend` で注入）。
+- **知識（05）**: 上記 `knowledge/fe-fc/` と `src/lib/knowledge.ts`。
+- **プロンプト（06）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。
+- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04 の手動確認用ハーネス。**ticket 10 で本セッション画面に置き換える前提**の暫定物。
+- 未着手: 07（`/api/narrate`）・08（TTS）・09（トップ）・10（セッション画面）・11（録画モード）・12/13（任意）。`@google/genai` は 07 で導入予定。
 
 ## Next.js 15（App Router）ベストプラクティス
 
