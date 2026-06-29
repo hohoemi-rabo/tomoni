@@ -8,12 +8,12 @@
 
 ## Todo
 
-- [ ] `knowledge/fe-fc/fe-primer.md` を配置（既存のルート `fe-primer.md` を移設）
-- [ ] `knowledge/fe-fc/chapters/` ディレクトリを作成
-- [ ] 章キャスト表テンプレ（§8.2 の体裁：自軍／敵・名前/クラス/Lv/HP/持ち物）を `chapter-01.md` のサンプルで用意
-- [ ] 全体プライマーを読む関数 `loadPrimer()`
-- [ ] `state.chapter` → ゼロ埋め番号 → `chapter-XX.md` を1枚だけ読む `loadChapterCast(chapter)`（無ければ未注入で続行）
-- [ ] スクショ→名簿化の運用手順を `docs` 内に明記（§8.4：体裁テンプレ厳守・表の情報のみ・ASCIIゼロ埋め名）
+- [×] `knowledge/fe-fc/fe-primer.md` を配置（既存のルート `fe-primer.md` を移設）
+- [×] `knowledge/fe-fc/chapters/` ディレクトリを作成
+- [×] 章キャスト表テンプレ（§8.2 の体裁：自軍／敵・名前/クラス/Lv/HP/持ち物）を `chapter-01.md` の空テンプレで用意（中身は §8.4 でスクショから記入）
+- [×] 全体プライマーを読む関数 `loadPrimer()`（`src/lib/knowledge.ts`）
+- [×] `state.chapter` → ゼロ埋め番号 → `chapter-XX.md` を1枚だけ読む `loadChapterCast(chapter)`（無ければ未注入で続行・`ENOENT`→null）
+- [×] スクショ→名簿化の運用手順を明記（`knowledge/fe-fc/README.md`：体裁テンプレ厳守・表の情報のみ・ASCIIゼロ埋め名）
 
 ## 完了条件
 
