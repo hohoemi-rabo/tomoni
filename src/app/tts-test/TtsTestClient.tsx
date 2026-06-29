@@ -63,12 +63,12 @@ export default function TtsTestClient() {
         <label className="flex items-center gap-2 text-sm">
           ボイス
           <select
-            className="rounded border border-black/15 bg-transparent px-2 py-1 dark:border-white/15"
+            className="rounded border border-black/15 bg-background px-2 py-1 text-foreground dark:border-white/15"
             value={tts.voice}
             onChange={(e) => tts.setVoice(e.target.value)}
           >
             {TTS_VOICES.map((v) => (
-              <option key={v} value={v}>
+              <option key={v} value={v} className="bg-background text-foreground">
                 {v.replace("ja-JP-Chirp3-HD-", "")}
               </option>
             ))}
