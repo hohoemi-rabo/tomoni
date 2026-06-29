@@ -8,14 +8,14 @@
 
 ## Todo
 
-- [ ] `<video>` → canvas → JPEG(base64) のフレーム取得関数
-- [ ] **長辺512px程度へダウンスケール**（`config.ts` の定数を使用）
-- [ ] 前回送信フレームとの簡易ピクセル差分（縮小画像同士）で変化量を算出
-- [ ] しきい値超過時のみ送信するゲート（間隔・しきい値は定数で調整可能に）
-- [ ] 一定間隔でフレームを評価するループ（`requestAnimationFrame`/`setInterval`・ON/OFF可能）
-- [ ] 直近のAI発言を数件メモリ保持し、送信時に `recentLines` として渡す
-- [ ] 生成中は次の送信を抑止（多重送信防止）
-- [ ] 手動トリガー「今の場面について話して」で即時送信（変化検知を迂回）
+- [×] `<video>` → canvas → JPEG(base64) のフレーム取得関数（`src/lib/video/frame.ts` `captureFrame`）
+- [×] **長辺512px程度へダウンスケール**（`config.ts` の `FRAME_DOWNSCALE_LONG_EDGE_PX` を使用）
+- [×] 前回送信フレームとの簡易ピクセル差分（極小グレースケール署名同士）で変化量を算出（`signatureDiff`）
+- [×] しきい値超過時のみ送信するゲート（間隔・しきい値は `config.ts` 定数で調整可能）
+- [×] 一定間隔でフレームを評価するループ（`setInterval`・`enabled` で ON/OFF）
+- [×] 直近のAI発言を数件メモリ保持し、送信時に `recentLines` として渡す（ring buffer・`addRecentLine`）
+- [×] 生成中は次の送信を抑止（`busy` フラグで多重送信防止）
+- [×] 手動トリガー「今の場面について話して」で即時送信（`triggerNow`・変化検知を迂回）
 
 ## 完了条件
 

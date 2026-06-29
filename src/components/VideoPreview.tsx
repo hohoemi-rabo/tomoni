@@ -13,6 +13,8 @@ const DEVICE_STORAGE_KEY = "tomoni.videoDeviceId";
 export interface VideoPreviewProps {
   /** ストリーム確定/解放を親（ticket 04/10）へ通知。フレーム取得に使う。 */
   onStreamChange?: (stream: MediaStream | null) => void;
+  /** `<video>` 要素を親へ渡す（フレーム取得＝ticket 04 がこの要素を読む）。 */
+  onVideoElement?: (el: HTMLVideoElement | null) => void;
 }
 
 /**
@@ -20,9 +22,21 @@ export interface VideoPreviewProps {
  * デバイス選択・プレビュー・エラー表示・選択の記憶を担う。フレーム切り出しは
  * ここでは行わない（ticket 04）。
  */
-export default function VideoPreview({ onStreamChange }: VideoPreviewProps) {
+export default function VideoPreview({
+  onStreamChange,
+  onVideoElement,
+}: VideoPreviewProps) {
   const sourceRef = useRef<UserMediaSource | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // 内部 ref に保持しつつ、親（ticket 04/10）へも要素を渡す callback ref。
+  const setVideoEl = useCallback(
+    (el: HTMLVideoElement | null) => {
+      videoRef.current = el;
+      onVideoElement?.(el);
+    },
+    [onVideoElement],
+  );
 
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
@@ -163,7 +177,7 @@ export default function VideoPreview({ onStreamChange }: VideoPreviewProps) {
       )}
 
       <video
-        ref={videoRef}
+        ref={setVideoEl}
         className="w-full max-w-2xl rounded bg-black"
         muted
         playsInline

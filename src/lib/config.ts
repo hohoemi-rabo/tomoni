@@ -18,6 +18,15 @@ export const FRAME_DIFF_THRESHOLD = 0.05;
 /** 送信前ダウンスケールの長辺ピクセル数。FC版の低解像度なら十分読める。 */
 export const FRAME_DOWNSCALE_LONG_EDGE_PX = 512;
 
+/** 送信JPEGの品質（0〜1）。下げるほど軽い＝コスト減。 */
+export const FRAME_JPEG_QUALITY = 0.7;
+
+/**
+ * 変化検知に使う極小グレースケール署名の長辺ピクセル数。
+ * 512全画素を比較するより安価で、軽微なノイズにも強い。
+ */
+export const FRAME_DIFF_SAMPLE_LONG_EDGE_PX = 64;
+
 /** 「直前と同じことを繰り返さない」ためにプロンプトへ渡す直近AI発言の保持件数。 */
 export const RECENT_LINES_KEEP = 5;
 
