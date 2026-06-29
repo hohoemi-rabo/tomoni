@@ -8,14 +8,14 @@
 
 ## Todo
 
-- [ ] `POST /api/narrate`（`src/app/api/narrate/route.ts`）を作成（毎回動的・キャッシュしない）
-- [ ] 入力 `{ playthroughId, imageBase64, recentLines }` を検証
-- [ ] `playthroughId` から `state`/`persona` を取得、プライマー＋現在章キャストを読み 06 でプロンプト組み立て
-- [ ] `@google/genai` で `gemini-2.5-flash` を呼ぶ（Vision・画像1枚＋指示）
-- [ ] `thinkingConfig.thinkingBudget: 0`、`safetySettings` 全カテゴリ `BLOCK_NONE`
-- [ ] `generateContentStream` の `chunk.text` を `ReadableStream` で返す
-- [ ] `withRetry`（指数バックオフ・最大3回）で一時エラーをリトライ
-- [ ] エラーはクライアントに伝え画面表示できる形で返す
+- [×] `POST /api/narrate`（`src/app/api/narrate/route.ts`）を作成（毎回動的・キャッシュしない）
+- [×] 入力 `{ playthroughId, imageBase64, recentLines }` を検証
+- [×] `playthroughId` から `state`/`persona` を取得、プライマー＋現在章キャストを読み 06 でプロンプト組み立て
+- [×] `@google/genai` で `gemini-2.5-flash` を呼ぶ（Vision・画像1枚＋指示）
+- [×] `thinkingConfig.thinkingBudget: 0`、`safetySettings` 全カテゴリ `BLOCK_NONE`
+- [×] `generateContentStream` の `chunk.text` を `ReadableStream` で返す
+- [×] `withRetry`（指数バックオフ・最大3回）で一時エラーをリトライ
+- [×] エラーはクライアントに伝え画面表示できる形で返す
 
 ## 完了条件
 
