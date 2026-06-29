@@ -27,7 +27,7 @@ npm run start   # ビルド済みを起動
 npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 ```
 
-テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存（映像取り込み・自動ループ）は開発者が `/capture-test` で手動確認。
+テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` / `sentence.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。API Route（`/api/narrate` / `/api/tts`）は `npm run dev` 起動後に `curl` で疎通・異常系を確認。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存は開発者が手動確認（映像取り込み・自動ループは `/capture-test`、読み上げは `/tts-test`）。
 
 ## 技術スタック
 
