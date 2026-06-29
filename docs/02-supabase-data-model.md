@@ -8,13 +8,13 @@
 
 ## Todo
 
-- [ ] Supabase クライアント `src/lib/supabase.ts`（サーバ用）を作成
-- [ ] `playthroughs` テーブル作成 SQL（`id uuid pk`・`title`・`game_version`・`state jsonb`・`persona jsonb`・`created_at`・`updated_at`）
-- [ ] `messages` テーブル（任意・動画ログ／ふりかえり用。継続性には使わない）
-- [ ] マイグレーション/セットアップ手順を `docs` か SQL ファイルに残す
-- [ ] `state` の緩いスキーマを型化（`chapter`・`lost_units[]`・`progress`・`last_session_summary`）
-- [ ] CRUD ヘルパー（取得・作成・`state`更新）を `src/lib/playthroughs.ts` に
-- [ ] 既定 `persona`（戦友のキャラ設定）の初期値を定義
+- [×] Supabase クライアント `src/lib/supabase.ts`（サーバ用）を作成
+- [×] `playthroughs` テーブル作成 SQL（`id uuid pk`・`title`・`game_version`・`state jsonb`・`persona jsonb`・`created_at`・`updated_at`）
+- [×] `messages` テーブル（任意・動画ログ／ふりかえり用。継続性には使わない）
+- [×] マイグレーション/セットアップ手順を `docs` か SQL ファイルに残す（`supabase/migrations/0001_init.sql`・新規 `tomoni` プロジェクト ref `enwzuxfufsnvghivcyut` に MCP で適用済み）
+- [×] `state` の緩いスキーマを型化（`chapter`・`lost_units[]`・`progress`・`last_session_summary`）— ticket 01 の `src/lib/types.ts` に定義済み
+- [×] CRUD ヘルパー（取得・作成・`state`更新）を `src/lib/playthroughs.ts` に
+- [×] 既定 `persona`（戦友のキャラ設定）の初期値を定義（`src/lib/persona.ts`）
 
 ## 完了条件
 

@@ -45,3 +45,15 @@ export interface NarrateRequest {
   imageBase64: string;
   recentLines: string[];
 }
+
+/**
+ * 会話ログ1件（Supabase `messages` に対応・§9）。
+ * 動画用ログ／ふりかえり表示のためだけに保存し、継続性には使わない。
+ */
+export interface Message {
+  id: string;
+  playthrough_id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}

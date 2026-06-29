@@ -30,3 +30,13 @@ export function getGeminiApiKey(): string {
 export function getGoogleTtsApiKey(): string {
   return requireServerEnv("GOOGLE_TTS_API_KEY");
 }
+
+/** Supabase プロジェクトの API URL（サーバ専用）。 */
+export function getSupabaseUrl(): string {
+  return requireServerEnv("SUPABASE_URL");
+}
+
+/** Supabase anon キー（サーバ専用・ローカル単一ユーザー前提）。 */
+export function getSupabaseAnonKey(): string {
+  return requireServerEnv("SUPABASE_ANON_KEY");
+}
