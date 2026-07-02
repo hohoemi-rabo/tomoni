@@ -37,7 +37,10 @@ export default async function SessionPage({
         </Link>
       </header>
 
-      <SessionClient playthroughId={playthrough.id} />
+      <SessionClient
+        playthroughId={playthrough.id}
+        initialChapter={playthrough.state?.chapter ?? ""}
+      />
     </main>
   );
 }

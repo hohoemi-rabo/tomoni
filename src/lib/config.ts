@@ -53,3 +53,6 @@ export const GEMINI_NARRATE_MODEL = "gemini-2.5-flash";
 
 /** state 更新（任意・要約＋JSON化）に使う Gemini モデル。 */
 export const GEMINI_STATE_MODEL = "gemini-2.5-flash-lite";
+
+/** end-session でモデルへ渡す実況ログの最大件数（トークン抑制）。 */
+export const END_SESSION_MAX_LINES = 40;

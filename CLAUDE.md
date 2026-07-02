@@ -57,7 +57,7 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 
 ### 現在の実装状況（モジュール地図）
 
-完了チケット 01〜11。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
+完了チケット 01〜12。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
 
 - **基盤（01）**: `src/lib/env.ts`（サーバ専用キーの遅延検証アクセサ）・`src/lib/config.ts`（調整可能な定数を一元管理）・`src/lib/retry.ts`（`withRetry`・指数バックオフ）・`src/lib/types.ts`（`State`/`Persona`/`Playthrough`/`Message`/`NarrateRequest`）。
 - **データ層（02）**: `src/lib/supabase.ts`（`server-only` クライアント）・`src/lib/playthroughs.ts`（CRUD＋`state` 部分更新）・`src/lib/persona.ts`（`DEFAULT_PERSONA`）。
@@ -69,8 +69,9 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 - **TTS（08）**: `src/lib/sentence.ts`（`takeSentences`・純関数の文末分割）・`src/app/api/tts/route.ts`（Cloud TTS REST 直叩き→`{ audioBase64 }`・`withRetry`・`{ error }` JSON）・`src/hooks/useTts.ts`（`'use client'`・`feed`/`flush`/`reset`＋1文先読みパイプライン再生キュー・ON/OFF・ボイス選択）。ボイス候補は `config.ts` の `TTS_VOICES`。
 - **トップ（09）**: `src/app/page.tsx`（`force-dynamic` の Server Component・`listPlaythroughs` で一覧・各項目から `/session/[id]` へ）・`src/app/NewPlaythroughForm.tsx`（`'use client'`・`useActionState`）・`src/app/actions.ts`（`'use server'` の `createPlaythroughAction`・入力検証＋`revalidatePath('/')`）。
 - **セッション画面（10）+ 録画モード（11）**: `src/app/session/[id]/page.tsx`（Server Component・`params` を `await`・`getPlaythrough`→無ければ `notFound()`）・`src/app/session/[id]/SessionClient.tsx`（`'use client'` 統合本体。VideoPreview＋useAutoNarration＋useTts を配線。`onSend` で `/api/narrate` をストリーム fetch→逐次表示＋`useTts.feed`、直近発言を保持・表示。onSend↔addRecentLine の循環は ref で解消）。**MVP完成条件（取り込み→自動実況→読み上げ）がこの画面で通る。** 録画モードは同ファイル内の `fixed inset-0` 全画面オーバーレイ（単色背景に AI発言＝`currentText` だけ中央大表示・文字サイズ段階 `RECORDING_FONT_STEPS`・Esc/終了で解除・ループは止めない）。
+- **state更新／継続性（12）**: `src/app/api/end-session/route.ts`（`POST`・実況ログを `gemini-2.5-flash-lite` で構造化JSON要約→`last_session_summary`/`progress` を生成、`chapter` は手入力を反映、`updatePlaythroughState` で jsonb マージ）。SessionClient に「セッション終了して保存」UI（到達章入力＋保存・`sessionLinesRef` で全発言保持）。再開時は `buildStateLines` が `last_session_summary` を「前回までのあらすじ」として注入（配線済み）。
 - **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。10 統合後も独立した切り分けツールとして**残す**。
-- 未着手: 12/13（任意）。
+- 未着手: 13（STT・任意）。
 
 ## Next.js 15（App Router）ベストプラクティス
 

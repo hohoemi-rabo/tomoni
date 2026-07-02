@@ -8,11 +8,11 @@
 
 ## Todo
 
-- [ ] `POST /api/end-session`：今回の流れから軽い state を生成し `playthroughs.state` を更新
-- [ ] 要約生成に `gemini-2.5-flash-lite`（要約＋JSON化・安価）を使用
-- [ ] `state`：`chapter`・`lost_units[]`・`progress`・`last_session_summary`（3〜6文）
-- [ ] 再開時に `last_session_summary` を「前回までのあらすじ」としてプロンプトへ
-- [ ] セッション画面に「セッション終了して保存」操作を追加
+- [×] `POST /api/end-session`：今回の流れから軽い state を生成し `playthroughs.state` を更新
+- [×] 要約生成に `gemini-2.5-flash-lite`（要約＋JSON化・安価）を使用
+- [×] `state`：`chapter`（手入力）・`progress`・`last_session_summary`（3〜6文）を更新（`lost_units[]` は MVP では自動更新しない＝誤抽出回避）
+- [×] 再開時に `last_session_summary` を「前回までのあらすじ」としてプロンプトへ（`buildStateLines` 経由・検証済み）
+- [×] セッション画面に「セッション終了して保存」操作を追加
 
 ## 完了条件
 

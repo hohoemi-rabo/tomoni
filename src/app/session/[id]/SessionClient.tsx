@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import VideoPreview from "@/components/VideoPreview";
-import { RECENT_LINES_KEEP, TTS_VOICES } from "@/lib/config";
+import {
+  END_SESSION_MAX_LINES,
+  RECENT_LINES_KEEP,
+  TTS_VOICES,
+} from "@/lib/config";
 import { useAutoNarration } from "@/hooks/useAutoNarration";
 import { useTts } from "@/hooks/useTts";
 
@@ -30,10 +34,14 @@ const DEFAULT_FONT_IDX = 2; // text-5xl
  */
 export default function SessionClient({
   playthroughId,
+  initialChapter,
 }: {
   playthroughId: string;
+  initialChapter: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // 今回のセッションの全 AI 発言を保持（表示用 recentLines とは別・end-session 用）。
+  const sessionLinesRef = useRef<string[]>([]);
 
   const tts = useTts();
   // onSend↔auto の循環を避けるため、auto 由来の値と tts は ref 経由で参照する
@@ -59,6 +67,42 @@ export default function SessionClient({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [recording]);
+
+  // セッション終了・保存（ticket 12・任意の継続性）。
+  const [chapterInput, setChapterInput] = useState(initialChapter);
+  const [saving, setSaving] = useState(false);
+  const [savedSummary, setSavedSummary] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const endSession = useCallback(async () => {
+    setSaving(true);
+    setSaveError(null);
+    setSavedSummary(null);
+    try {
+      const res = await fetch("/api/end-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playthroughId,
+          lines: sessionLinesRef.current.slice(-END_SESSION_MAX_LINES),
+          chapter: chapterInput.trim() || undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        state?: { last_session_summary?: string };
+        error?: string;
+      } | null;
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error ?? `保存に失敗(HTTP ${res.status})`);
+      }
+      setSavedSummary(data.state?.last_session_summary ?? "（要約なし）");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  }, [playthroughId, chapterInput]);
 
   // 1回の実況送信：07 をストリーム fetch → 逐次表示＋逐次読み上げ。
   const onSend = useCallback(
@@ -99,6 +143,7 @@ export default function SessionClient({
       if (line) {
         addRecentRef.current(line); // 繰り返し防止用に hook 内へ記録。
         setRecentLines((prev) => [line, ...prev].slice(0, RECENT_LINES_KEEP));
+        sessionLinesRef.current.push(line); // end-session の要約用に全件保持。
       }
     },
     [playthroughId],
@@ -213,6 +258,46 @@ export default function SessionClient({
           </ul>
         </section>
       )}
+
+      {/* セッション終了・保存（任意の継続性・ticket 12） */}
+      <section className="flex flex-col gap-2 border-t border-black/10 pt-4 dark:border-white/10">
+        <h2 className="text-sm font-medium text-black/60 dark:text-white/60">
+          セッションを終了して保存
+        </h2>
+        <p className="text-xs text-black/45 dark:text-white/45">
+          今回の実況を要約して「前回までのあらすじ」に保存します（次回に反映）。到達章も更新できます。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            到達章
+            <input
+              value={chapterInput}
+              onChange={(e) => setChapterInput(e.target.value)}
+              placeholder="例: 第2章"
+              className="w-32 rounded border border-black/15 bg-background px-2 py-1 text-foreground dark:border-white/15"
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
+            onClick={endSession}
+            disabled={saving}
+          >
+            {saving ? "保存中…" : "セッション終了して保存"}
+          </button>
+        </div>
+        {savedSummary && (
+          <div className="rounded border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm">
+            <span className="text-green-700 dark:text-green-400">保存しました。</span>{" "}
+            <span className="text-black/70 dark:text-white/70">{savedSummary}</span>
+          </div>
+        )}
+        {saveError && (
+          <p className="rounded border border-red-400/50 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+            保存エラー: {saveError}
+          </p>
+        )}
+      </section>
 
       {/* 録画モード: AI発言だけを全画面・単色背景で大きく表示（他UIを覆う） */}
       {recording && (
