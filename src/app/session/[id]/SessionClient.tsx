@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import VideoPreview from "@/components/VideoPreview";
 import { RECENT_LINES_KEEP, TTS_VOICES } from "@/lib/config";
@@ -8,11 +8,25 @@ import { useAutoNarration } from "@/hooks/useAutoNarration";
 import { useTts } from "@/hooks/useTts";
 
 /**
+ * 録画モード（ticket 11）の文字サイズ段階。OBSに映す前提で大きめに。
+ * tempo/cost 系ではないUI定数なので config.ts ではなくここで一元管理する。
+ */
+const RECORDING_FONT_STEPS = [
+  "text-3xl",
+  "text-4xl",
+  "text-5xl",
+  "text-6xl",
+  "text-7xl",
+] as const;
+const DEFAULT_FONT_IDX = 2; // text-5xl
+
+/**
  * セッション画面の対話本体（ticket 10）。03/04/07/08 を1つに配線する。
  *
  * - 04（自動/手動トリガー）が現フレームを取り、`onSend` で 07 をストリーム fetch。
  * - 受信チャンクを画面に逐次表示しつつ 08（`useTts`）へ流して文単位に読み上げる。
  * - 直近の AI 発言を保持し、繰り返し防止用に次の送信へ渡す。
+ * - 録画モード（ticket 11）: AI発言だけを全画面・単色背景で大きく表示する。
  */
 export default function SessionClient({
   playthroughId,
@@ -30,6 +44,21 @@ export default function SessionClient({
 
   const [currentText, setCurrentText] = useState("");
   const [recentLines, setRecentLines] = useState<string[]>([]);
+
+  // 録画モード（ticket 11）: 表示切替のみ。自動実況・読み上げのループは止めない。
+  const [recording, setRecording] = useState(false);
+  const [fontIdx, setFontIdx] = useState(DEFAULT_FONT_IDX);
+  const lastFontIdx = RECORDING_FONT_STEPS.length - 1;
+
+  // 録画モード中は Esc で通常画面に戻れるようにする。
+  useEffect(() => {
+    if (!recording) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRecording(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [recording]);
 
   // 1回の実況送信：07 をストリーム fetch → 逐次表示＋逐次読み上げ。
   const onSend = useCallback(
@@ -125,6 +154,14 @@ export default function SessionClient({
             ))}
           </select>
         </label>
+
+        <button
+          type="button"
+          className="rounded border border-black/15 px-3 py-1 text-sm dark:border-white/15"
+          onClick={() => setRecording(true)}
+        >
+          録画モード
+        </button>
       </div>
 
       {/* 現在の実況（ストリーミング） */}
@@ -175,6 +212,45 @@ export default function SessionClient({
             ))}
           </ul>
         </section>
+      )}
+
+      {/* 録画モード: AI発言だけを全画面・単色背景で大きく表示（他UIを覆う） */}
+      {recording && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
+          <div className="flex items-center justify-end gap-3 p-3 text-sm text-black/40 dark:text-white/40">
+            <button
+              type="button"
+              className="rounded px-2 py-1 hover:text-black dark:hover:text-white"
+              onClick={() => setFontIdx((i) => Math.max(0, i - 1))}
+              aria-label="文字を小さく"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              className="rounded px-2 py-1 hover:text-black dark:hover:text-white"
+              onClick={() => setFontIdx((i) => Math.min(lastFontIdx, i + 1))}
+              aria-label="文字を大きく"
+            >
+              A+
+            </button>
+            <button
+              type="button"
+              className="rounded px-2 py-1 hover:text-black dark:hover:text-white"
+              onClick={() => setRecording(false)}
+            >
+              終了
+            </button>
+          </div>
+
+          <div className="flex flex-1 items-center justify-center px-[6vw] pb-[6vh]">
+            <p
+              className={`mx-auto max-w-[24ch] whitespace-pre-wrap text-center font-semibold leading-snug ${RECORDING_FONT_STEPS[fontIdx]}`}
+            >
+              {currentText || " "}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
