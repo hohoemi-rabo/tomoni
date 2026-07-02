@@ -8,10 +8,10 @@
 
 ## Todo
 
-- [ ] Web Speech API（`SpeechRecognition`）で音声入力 `'use client'`
-- [ ] 認識テキストを実況リクエストに添えて送信（手動トリガー経由）
-- [ ] マイク権限拒否・非対応ブラウザのフォールバック表示
-- [ ] STT ON/OFF トグル
+- [×] Web Speech API（`SpeechRecognition`）で音声入力 `'use client'`（`src/hooks/useSpeechRecognition.ts`）
+- [×] 認識テキストを実況リクエストに添えて送信（手動トリガー経由・`triggerNow(userMessage)`→`/api/narrate` の `userMessage`）
+- [×] マイク権限拒否・非対応ブラウザのフォールバック表示
+- [×] STT ON/OFF トグル（押して話す）
 
 ## 完了条件
 

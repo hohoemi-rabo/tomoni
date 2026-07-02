@@ -58,7 +58,7 @@ export default function CaptureTestClient() {
         <button
           type="button"
           className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
-          onClick={auto.triggerNow}
+          onClick={() => auto.triggerNow()}
           disabled={auto.busy}
         >
           今の場面について話して

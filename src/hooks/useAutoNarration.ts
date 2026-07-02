@@ -13,6 +13,8 @@ import { captureFrame, signatureDiff } from "@/lib/video/frame";
 export type SendFn = (
   imageBase64: string,
   recentLines: string[],
+  /** 手動トリガー時のプレイヤーの話しかけ（STT・任意・ticket 13）。 */
+  userMessage?: string,
 ) => Promise<void>;
 
 export interface UseAutoNarrationOptions {
@@ -26,8 +28,8 @@ export interface UseAutoNarrationOptions {
 export interface UseAutoNarration {
   enabled: boolean;
   setEnabled: (on: boolean) => void;
-  /** 変化検知を迂回して即時送信（手動「今の場面について話して」）。 */
-  triggerNow: () => void;
+  /** 変化検知を迂回して即時送信（手動「今の場面について話して」／STT の話しかけ）。 */
+  triggerNow: (userMessage?: string) => void;
   /** 直近のAI発言を保持（消費側が確定文を push）。 */
   addRecentLine: (line: string) => void;
   /** 生成中（次の送信を抑止中）か。 */
@@ -71,29 +73,35 @@ export function useAutoNarration({
   );
 
   // 1回の送信処理。busy 管理と lastSig 更新を内包する。
-  const send = useCallback(async (base64: string, sig: Uint8ClampedArray) => {
-    busyRef.current = true;
-    setBusy(true);
-    // 静止画面での二重発火を防ぐため、送信が決まった時点で署名を更新。
-    lastSigRef.current = sig;
-    setLastError(null);
-    try {
-      await onSendRef.current(base64, [...recentRef.current]);
-    } catch (e) {
-      setLastError(e instanceof Error ? e.message : String(e));
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
-    }
-  }, []);
+  const send = useCallback(
+    async (base64: string, sig: Uint8ClampedArray, userMessage?: string) => {
+      busyRef.current = true;
+      setBusy(true);
+      // 静止画面での二重発火を防ぐため、送信が決まった時点で署名を更新。
+      lastSigRef.current = sig;
+      setLastError(null);
+      try {
+        await onSendRef.current(base64, [...recentRef.current], userMessage);
+      } catch (e) {
+        setLastError(e instanceof Error ? e.message : String(e));
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [],
+  );
 
-  const triggerNow = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || busyRef.current) return;
-    const frame = captureFrame(video);
-    if (!frame) return;
-    void send(frame.base64, frame.signature);
-  }, [videoRef, send]);
+  const triggerNow = useCallback(
+    (userMessage?: string) => {
+      const video = videoRef.current;
+      if (!video || busyRef.current) return;
+      const frame = captureFrame(video);
+      if (!frame) return;
+      void send(frame.base64, frame.signature, userMessage);
+    },
+    [videoRef, send],
+  );
 
   // 自動ループ: enabled の間だけ interval を張る。
   useEffect(() => {

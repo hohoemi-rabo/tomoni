@@ -32,10 +32,8 @@ function parseRequest(body: unknown): NarrateRequest {
   if (typeof body !== "object" || body === null) {
     throw new NarrateError("リクエスト本文が不正です（JSON オブジェクトが必要）。", 400);
   }
-  const { playthroughId, imageBase64, recentLines } = body as Record<
-    string,
-    unknown
-  >;
+  const { playthroughId, imageBase64, recentLines, userMessage } =
+    body as Record<string, unknown>;
 
   if (typeof playthroughId !== "string" || playthroughId.trim() === "") {
     throw new NarrateError("playthroughId（非空の文字列）が必要です。", 400);
@@ -52,11 +50,16 @@ function parseRequest(body: unknown): NarrateRequest {
       throw new NarrateError("recentLines は文字列の配列で指定してください。", 400);
     }
   }
+  // userMessage は任意（STT）。あれば string であること。
+  if (userMessage !== undefined && typeof userMessage !== "string") {
+    throw new NarrateError("userMessage は文字列で指定してください。", 400);
+  }
 
   return {
     playthroughId,
     imageBase64,
     recentLines: (recentLines as string[] | undefined) ?? [],
+    userMessage: userMessage as string | undefined,
   };
 }
 
@@ -68,7 +71,8 @@ export async function POST(req: Request): Promise<Response> {
     const body = await req.json().catch(() => {
       throw new NarrateError("リクエスト本文を JSON として解釈できません。", 400);
     });
-    const { playthroughId, imageBase64, recentLines } = parseRequest(body);
+    const { playthroughId, imageBase64, recentLines, userMessage } =
+      parseRequest(body);
 
     const playthrough = await getPlaythrough(playthroughId);
     if (!playthrough) {
@@ -90,6 +94,7 @@ export async function POST(req: Request): Promise<Response> {
       state: playthrough.state,
       chapterCast,
       recentLines,
+      userMessage,
     });
 
     // 確立（最初のチャンク送信前）のみ withRetry で再試行する。

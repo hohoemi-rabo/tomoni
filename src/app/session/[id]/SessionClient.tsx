@@ -9,6 +9,7 @@ import {
   TTS_VOICES,
 } from "@/lib/config";
 import { useAutoNarration } from "@/hooks/useAutoNarration";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTts } from "@/hooks/useTts";
 
 /**
@@ -106,7 +107,11 @@ export default function SessionClient({
 
   // 1回の実況送信：07 をストリーム fetch → 逐次表示＋逐次読み上げ。
   const onSend = useCallback(
-    async (imageBase64: string, recentLinesArg: string[]) => {
+    async (
+      imageBase64: string,
+      recentLinesArg: string[],
+      userMessage?: string,
+    ) => {
       ttsRef.current.reset(); // 新しい発言。前の再生/バッファを破棄。
       setCurrentText("");
 
@@ -117,6 +122,7 @@ export default function SessionClient({
           playthroughId,
           imageBase64,
           recentLines: recentLinesArg,
+          userMessage: userMessage?.trim() || undefined,
         }),
       });
       if (!res.ok || !res.body) {
@@ -152,6 +158,18 @@ export default function SessionClient({
   const auto = useAutoNarration({ videoRef, onSend });
   addRecentRef.current = auto.addRecentLine;
 
+  // STT（音声で話しかける・ticket 13・任意）。認識テキストを手動トリガーに添えて送る。
+  const [sttEnabled, setSttEnabled] = useState(false);
+  const [lastUserMessage, setLastUserMessage] = useState("");
+  const stt = useSpeechRecognition({
+    onResult: (text) => {
+      const t = text.trim();
+      if (!t) return;
+      setLastUserMessage(t);
+      auto.triggerNow(t); // 手動トリガー経由で発話を添えて送信。
+    },
+  });
+
   return (
     <div className="flex flex-col gap-5">
       <VideoPreview onVideoElement={(el) => (videoRef.current = el)} />
@@ -170,7 +188,7 @@ export default function SessionClient({
         <button
           type="button"
           className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
-          onClick={auto.triggerNow}
+          onClick={() => auto.triggerNow()}
           disabled={auto.busy}
         >
           今の場面について話して
@@ -207,7 +225,46 @@ export default function SessionClient({
         >
           録画モード
         </button>
+
+        {/* STT: 音声で話しかける（ticket 13・任意・ブラウザ依存） */}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={sttEnabled}
+            disabled={!stt.supported}
+            onChange={(e) => setSttEnabled(e.target.checked)}
+          />
+          音声で話しかける
+        </label>
+        {sttEnabled && stt.supported && (
+          <button
+            type="button"
+            className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
+            onClick={() => (stt.listening ? stt.stop() : stt.start())}
+            disabled={auto.busy}
+          >
+            {stt.listening ? "聞き取り中…（停止）" : "🎤 話しかける"}
+          </button>
+        )}
       </div>
+
+      {!stt.supported && (
+        <p className="text-xs text-black/45 dark:text-white/45">
+          このブラウザは音声認識（STT）に非対応です。Chrome 系でお試しください。
+        </p>
+      )}
+
+      {/* STT: 暫定認識・直近の話しかけ・エラー */}
+      {(stt.interim || lastUserMessage) && (
+        <p className="text-sm text-black/60 dark:text-white/60">
+          あなた: {stt.interim || lastUserMessage}
+        </p>
+      )}
+      {stt.error && (
+        <p className="rounded border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          {stt.error}
+        </p>
+      )}
 
       {/* 現在の実況（ストリーミング） */}
       <section className="min-h-24 rounded border border-black/10 p-4 dark:border-white/10">

@@ -19,6 +19,8 @@ export interface BuildSystemPromptInput {
   chapterCast?: string | null;
   /** 直近のAI発言（繰り返し防止に使う）。 */
   recentLines?: string[];
+  /** プレイヤーからの話しかけ（STT・任意・§7.5）。あれば応答に反映する。 */
+  userMessage?: string;
 }
 
 export function buildSystemPrompt({
@@ -27,6 +29,7 @@ export function buildSystemPrompt({
   state,
   chapterCast,
   recentLines,
+  userMessage,
 }: BuildSystemPromptInput): string {
   const sections: string[] = [];
 
@@ -81,6 +84,20 @@ export function buildSystemPrompt({
         "以下は直前のあなたの発言。同じ内容・同じ言い回しを繰り返さず、新しい視点で話す。",
         "",
         ...recent.map((l) => `- ${l}`),
+      ].join("\n"),
+    );
+  }
+
+  // 6. プレイヤーからの話しかけ（あれば・最も操作的なので最後に置く）。
+  const said = userMessage?.trim();
+  if (said) {
+    sections.push(
+      [
+        "## プレイヤーからの話しかけ（今これに応えて）",
+        "",
+        "今プレイヤーがこう話しかけている。画面も見つつ、この言葉に戦友として自然に応じて。攻略の最適手は教えず、一緒に悩む側で。",
+        "",
+        `「${said}」`,
       ].join("\n"),
     );
   }

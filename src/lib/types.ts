@@ -44,6 +44,8 @@ export interface NarrateRequest {
   playthroughId: string;
   imageBase64: string;
   recentLines: string[];
+  /** プレイヤーからの話しかけ（STT・任意・§7.5）。あれば応答に反映する。 */
+  userMessage?: string;
 }
 
 /**
