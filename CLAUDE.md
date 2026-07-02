@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **実装の進捗は `docs/00-index.md` のチケット No.（01〜13）と各チケットの `## Todo` で管理する**。完了チケットの再実装や、未完チケットの先読み実装をしないこと。現状は下記「現在の実装状況」を参照。
 
+**Phase 1（MVP）は全13チケット実装完了**（各 `docs/*.md` の Todo は `- [×]` 済み）。以降は新たな要件を新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。実機での通し確認（OBS仮想カメラ→自動実況→読み上げ→録画モード→STT）は開発者の手動確認に委ねる。
+
 ## 開発チケットと Todo 運用
 
 `REQUIREMENTS.md` を機能単位に分割したチケットが `docs/` 配下にある（連番付き）。索引は `docs/00-index.md`。実装時は該当チケットを開き、その `## Todo` を進捗管理に使う。
@@ -27,7 +29,9 @@ npm run start   # ビルド済みを起動
 npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 ```
 
-テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` / `sentence.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。API Route（`/api/narrate` / `/api/tts`）は `npm run dev` 起動後に `curl` で疎通・異常系を確認。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存は開発者が手動確認（映像取り込み・自動ループは `/capture-test`、読み上げは `/tts-test`）。
+テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` / `sentence.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。API Route（`/api/narrate` / `/api/tts` / `/api/end-session`）は `npm run dev` 起動後に `curl` で疎通・異常系を確認。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存は開発者が手動確認（映像取り込み・自動ループは `/capture-test`、読み上げは `/tts-test`、セッション統合・録画モード・STT は `/session/[id]`。STT は Web Speech のため Chrome 系のみ）。
+
+> **注意**: `npm run dev` 起動中に `npm run build` を実行すると `.next` が壊れて実行中の dev サーバが 500 を返す。build する時は dev を止めてから。検証用の一時 JPEG が要るとき（narrate の curl 等）は Pillow/ImageMagick が無い環境では `curl https://picsum.photos/256.jpg` で取得できる（1x1 の極小 JPEG は Gemini が "Unable to process image" で弾く）。
 
 ## 技術スタック
 
