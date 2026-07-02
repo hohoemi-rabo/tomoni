@@ -217,10 +217,10 @@ export default function SessionClient({
       {/* 録画モード: AI発言だけを全画面・単色背景で大きく表示（他UIを覆う） */}
       {recording && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
-          <div className="flex items-center justify-end gap-3 p-3 text-sm text-black/40 dark:text-white/40">
+          <div className="flex items-center justify-end gap-2 p-3 text-sm">
             <button
               type="button"
-              className="rounded px-2 py-1 hover:text-black dark:hover:text-white"
+              className="rounded bg-black/5 px-3 py-1 text-black/70 hover:bg-black/10 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
               onClick={() => setFontIdx((i) => Math.max(0, i - 1))}
               aria-label="文字を小さく"
             >
@@ -228,7 +228,7 @@ export default function SessionClient({
             </button>
             <button
               type="button"
-              className="rounded px-2 py-1 hover:text-black dark:hover:text-white"
+              className="rounded bg-black/5 px-3 py-1 text-black/70 hover:bg-black/10 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
               onClick={() => setFontIdx((i) => Math.min(lastFontIdx, i + 1))}
               aria-label="文字を大きく"
             >
@@ -236,19 +236,27 @@ export default function SessionClient({
             </button>
             <button
               type="button"
-              className="rounded px-2 py-1 hover:text-black dark:hover:text-white"
+              className="rounded bg-black/5 px-3 py-1 text-black/70 hover:bg-black/10 dark:bg-white/10 dark:text-white/80 dark:hover:bg-white/20"
               onClick={() => setRecording(false)}
             >
-              終了
+              終了（Esc）
             </button>
           </div>
 
           <div className="flex flex-1 items-center justify-center px-[6vw] pb-[6vh]">
-            <p
-              className={`mx-auto max-w-[24ch] whitespace-pre-wrap text-center font-semibold leading-snug ${RECORDING_FONT_STEPS[fontIdx]}`}
-            >
-              {currentText || " "}
-            </p>
+            {currentText ? (
+              <p
+                className={`mx-auto max-w-[24ch] whitespace-pre-wrap text-center font-semibold leading-snug ${RECORDING_FONT_STEPS[fontIdx]}`}
+              >
+                {currentText}
+              </p>
+            ) : (
+              <p className="text-center text-xl text-black/35 dark:text-white/35">
+                実況を待っています…
+                <br />
+                （自動実況を ON にするか「今の場面について話して」で開始）
+              </p>
+            )}
           </div>
         </div>
       )}
