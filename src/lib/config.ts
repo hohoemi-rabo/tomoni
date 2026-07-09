@@ -72,3 +72,15 @@ export const END_SESSION_MAX_LINES = 40;
 
 /** 音声認識（STT・Web Speech）の言語。 */
 export const STT_LANG = "ja-JP";
+
+/** 章キャスト表の生成（/knowledge・ticket 16）で受け取る参照URLの上限。 */
+export const KNOWLEDGE_MAX_URLS = 3;
+
+/** 参照URLの取得タイムアウト（ミリ秒）。 */
+export const KNOWLEDGE_FETCH_TIMEOUT_MS = 15000;
+
+/** 参照URL1件から取り込む本文の上限文字数（トークンと事故の上限）。 */
+export const KNOWLEDGE_MAX_TEXT_CHARS = 300000;
+
+/** 章ごとのLLM抽出を何件まで同時に走らせるか。 */
+export const KNOWLEDGE_EXTRACT_CONCURRENCY = 4;

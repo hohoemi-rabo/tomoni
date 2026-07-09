@@ -75,7 +75,8 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 - **セッション画面（10）+ 録画モード（11）**: `src/app/session/[id]/page.tsx`（Server Component・`params` を `await`・`getPlaythrough`→無ければ `notFound()`）・`src/app/session/[id]/SessionClient.tsx`（`'use client'` 統合本体。VideoPreview＋useAutoNarration＋useTts を配線。`onSend` で `/api/narrate` をストリーム fetch→逐次表示＋`useTts.feed`、直近発言を保持・表示。onSend↔addRecentLine の循環は ref で解消）。**MVP完成条件（取り込み→自動実況→読み上げ）がこの画面で通る。** 録画モードは同ファイル内の `fixed inset-0` 全画面オーバーレイ（単色背景に AI発言＝`currentText` だけ中央大表示・文字サイズ段階 `RECORDING_FONT_STEPS`・Esc/終了で解除・ループは止めない）。
 - **state更新／継続性（12）**: `src/app/api/end-session/route.ts`（`POST`・実況ログを `gemini-2.5-flash-lite` で構造化JSON要約→`last_session_summary`/`progress` を生成、`chapter` は手入力を反映、`updatePlaythroughState` で jsonb マージ）。SessionClient に「セッション終了して保存」UI（到達章入力＋保存・`sessionLinesRef` で全発言保持）。再開時は `buildStateLines` が `last_session_summary` を「前回までのあらすじ」として注入（配線済み）。
 - **STT／音声で話しかける（13・任意）**: `src/hooks/useSpeechRecognition.ts`（`'use client'`・Web Speech の最小ラッパ・非対応時 `supported=false`）。SessionClient で「押して話す」→認識テキストを `useAutoNarration.triggerNow(userMessage)` 経由で送信。`/api/narrate` は `userMessage`（任意）を受け、`buildSystemPrompt` が「プレイヤーからの話しかけ」セクションとして注入する。
-- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。10 統合後も独立した切り分けツールとして**残す**。
+- **章キャスト表の生成（16）**: `src/lib/knowledge-extract.ts`（純関数のみ・`detectCharset`/`decodeHtml`/`htmlToText`/`splitChapters`/`accumulateAllies`/`renderChapterMarkdown`。`node --experimental-strip-types` で直接検証できる）・`src/app/api/knowledge/extract/route.ts`（URL取得→章分割→章ごとに `gemini-2.5-flash-lite` で**構造化JSONだけ**抽出。整形は純関数。**ファイルは書かない**）・`src/app/api/knowledge/save/route.ts`（目視確認後に書き出す。**リポジトリ内で唯一の `writeFile`**。パスは章番号からサーバ側で組み立てる）・`src/app/knowledge/`（`/knowledge` ページ）。落とし穴は `docs/16-knowledge-builder.md` の「実装時に分かったこと」を読むこと（セル区切り・`required`/`propertyOrdering`・職業で敵味方を判断させない・1章の失敗で全滅させない）。
+- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。`/knowledge`（`src/app/knowledge/`）は 16 の一度きりの道具。いずれも実況ループから独立した切り分けツールとして**残す**。
 
 ## Next.js 15（App Router）ベストプラクティス
 
@@ -125,7 +126,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
 - ❌ **攻略アドバイス／最適手の指示**をしない（聞かれても一緒に悩む側）。**加入条件を満たす操作手順**（誰で話しかける等）も含む。
 - ✅ **ネタバレはしてよい**（チケット14で解禁）。先の展開・人物の運命を自分から語ってよい。線引きは **「事実は語る、手順は言わない」**。「あの剣士はナバール。実は仲間になる」＝OK／「シーダで話しかけて」＝NG。
-- ❌ 攻略サイトのスクレイピング・攻略ナレッジ大量注入・RAG/埋め込み検索をしない。
+- ❌ 攻略ナレッジの大量注入・RAG/埋め込み検索をしない。（参照サイトからの取得はチケット16で解禁。ただし `/knowledge` での**名簿化のための一度きりの取得**に限り、散文＝攻略手順は捨て、目視確認してから保存する。実況ループからは取得しない。）
 - ❌ 複数ゲーム対応・ゲーム差し替えUI（FC版FE専用）。
 - ❌ 認証・マルチユーザー・デプロイ・公開。
 - ❌ 秒単位の高速実況（技術的に不可。数秒のラグ前提で「場面が変わったら語る」程度）。

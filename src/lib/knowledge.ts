@@ -14,7 +14,12 @@ import path from "node:path";
  * `knowledge/fe-fc/` がある状態で動かす。
  */
 
-const KNOWLEDGE_DIR = path.join(process.cwd(), "knowledge", "fe-fc");
+export const KNOWLEDGE_DIR = path.join(process.cwd(), "knowledge", "fe-fc");
+
+/** 章番号 → キャスト表のファイル名（ASCII・ゼロ埋め2桁）。読み書きで共有する。 */
+export function chapterFileName(chapter: number): string {
+  return `chapter-${String(chapter).padStart(2, "0")}.md`;
+}
 
 /** 全章共通プライマー（システムプロンプト先頭に固定する1枚）。 */
 export async function loadPrimer(): Promise<string> {
@@ -49,10 +54,9 @@ export async function loadChapterCast(chapter?: string): Promise<string | null> 
   const num = chapterToNumber(chapter);
   if (num === null) return null;
 
-  const fileName = `chapter-${String(num).padStart(2, "0")}.md`;
   try {
     return await readFile(
-      path.join(KNOWLEDGE_DIR, "chapters", fileName),
+      path.join(KNOWLEDGE_DIR, "chapters", chapterFileName(num)),
       "utf8",
     );
   } catch (error) {
