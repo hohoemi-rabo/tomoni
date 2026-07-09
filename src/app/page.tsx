@@ -65,6 +65,16 @@ export default async function Home() {
           </ul>
         )}
       </section>
+
+      {/* 実況とは寿命の違う道具。冒険一覧と混ぜず、末尾に小さく置く。 */}
+      <section className="flex flex-col gap-1 border-t border-black/10 pt-4 dark:border-white/10">
+        <Link href="/knowledge" className="text-sm hover:underline">
+          章キャスト表の生成 →
+        </Link>
+        <p className="text-xs text-black/55 dark:text-white/55">
+          参照URLから章ごとの登場人物リストを作る（一度きりの準備作業）。
+        </p>
+      </section>
     </main>
   );
 }

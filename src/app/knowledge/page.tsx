@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import KnowledgeClient from "@/app/knowledge/KnowledgeClient";
 
 /**
@@ -9,6 +11,12 @@ import KnowledgeClient from "@/app/knowledge/KnowledgeClient";
 export default function KnowledgePage() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 p-8">
+      <Link
+        href="/"
+        className="text-sm text-black/60 hover:underline dark:text-white/60"
+      >
+        ← トップへ戻る
+      </Link>
       <h1 className="text-lg font-semibold">章キャスト表の生成</h1>
       <p className="text-sm text-black/60 dark:text-white/60">
         参照URL（最大3件）の表から章ごとの名簿を作ります。取り込むのは表の事実だけで、
