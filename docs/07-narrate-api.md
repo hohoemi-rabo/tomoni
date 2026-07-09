@@ -9,7 +9,7 @@
 ## Todo
 
 - [×] `POST /api/narrate`（`src/app/api/narrate/route.ts`）を作成（毎回動的・キャッシュしない）
-- [×] 入力 `{ playthroughId, imageBase64, recentLines }` を検証
+- [×] 入力 `{ playthroughId, imageBase64, recentLines }` を検証（その後 13 で `userMessage?`、15 で `isIdle?` が加わった。現行の入力形は `REQUIREMENTS.md §7.1`）
 - [×] `playthroughId` から `state`/`persona` を取得、プライマー＋現在章キャストを読み 06 でプロンプト組み立て
 - [×] `@google/genai` で `gemini-2.5-flash` を呼ぶ（Vision・画像1枚＋指示）
 - [×] `thinkingConfig.thinkingBudget: 0`、`safetySettings` 全カテゴリ `BLOCK_NONE`
@@ -26,3 +26,4 @@
 
 - APIキーはサーバ専用。Route Handler 内でのみ使用。
 - 画像はダウンスケール済み前提（04）。送信回数を絞ることがコスト対策。
+- そのターンで実況させるか雑談させるかは、画像に隣接する `NARRATE_TURN_TEXT` / `IDLE_TURN_TEXT` の2定数だけが決める（15。システムプロンプトにモード指示を書かない）。

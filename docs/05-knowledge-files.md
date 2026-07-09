@@ -9,8 +9,8 @@
 ## Todo
 
 - [×] `knowledge/fe-fc/fe-primer.md` を配置（既存のルート `fe-primer.md` を移設）
-- [×] `knowledge/fe-fc/chapters/` ディレクトリを作成
-- [×] 章キャスト表テンプレ（§8.2 の体裁：自軍／敵・名前/クラス/Lv/HP/持ち物）を `chapter-01.md` の空テンプレで用意（中身は §8.4 でスクショから記入）
+- [×] `knowledge/fe-fc/chapters/` ディレクトリを作成（※現在は空テンプレ削除に伴いディレクトリごと消えている。git は空ディレクトリを追跡せず、`/knowledge` の保存時に自動で作られるので正しい状態）
+- [×] 章キャスト表テンプレ（§8.2 の体裁：自軍／敵・名前/クラス/Lv/HP/持ち物）を `chapter-01.md` の空テンプレで用意（中身は §8.4 でスクショから記入）→ **その後チケット16で方針転換して削除**。中身が空のテンプレはプレースホルダのままプロンプトへ注入され有害（`buildSystemPrompt` は非空なら注入する）。**空テンプレを置かない。** ファイルが無ければスキップされる＝無いほうが正しい
 - [×] 全体プライマーを読む関数 `loadPrimer()`（`src/lib/knowledge.ts`）
 - [×] `state.chapter` → ゼロ埋め番号 → `chapter-XX.md` を1枚だけ読む `loadChapterCast(chapter)`（無ければ未注入で続行・`ENOENT`→null）
 - [×] スクショ→名簿化の運用手順を明記（`knowledge/fe-fc/README.md`：体裁テンプレ厳守・表の情報のみ・ASCIIゼロ埋め名）
