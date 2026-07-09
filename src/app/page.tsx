@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import DeletePlaythroughButton from "@/app/DeletePlaythroughButton";
 import NewPlaythroughForm from "@/app/NewPlaythroughForm";
 import { listPlaythroughs } from "@/lib/playthroughs";
 
@@ -50,12 +51,15 @@ export default async function Home() {
                     {` ・ ${formatDate(pt.created_at)}`}
                   </span>
                 </div>
-                <Link
-                  href={`/session/${pt.id}`}
-                  className="shrink-0 rounded bg-foreground px-3 py-1.5 text-sm text-background"
-                >
-                  セッション開始
-                </Link>
+                <div className="flex shrink-0 items-start gap-2">
+                  <Link
+                    href={`/session/${pt.id}`}
+                    className="rounded bg-foreground px-3 py-1.5 text-sm text-background"
+                  >
+                    セッション開始
+                  </Link>
+                  <DeletePlaythroughButton id={pt.id} title={pt.title} />
+                </div>
               </li>
             ))}
           </ul>

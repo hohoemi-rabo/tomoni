@@ -37,6 +37,20 @@ export async function getPlaythrough(id: string): Promise<Playthrough | null> {
   });
 }
 
+/**
+ * プレイスルーを削除する。取り消せない。
+ * 紐づく `messages` は外部キーの `on delete cascade` で一緒に消える（0001_init.sql）。
+ */
+export async function deletePlaythrough(id: string): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await getSupabaseClient()
+      .from("playthroughs")
+      .delete()
+      .eq("id", id);
+    if (error) throw new Error(`プレイスルーの削除に失敗: ${error.message}`);
+  });
+}
+
 export interface CreatePlaythroughInput {
   title: string;
   game_version: string;
