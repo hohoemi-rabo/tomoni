@@ -46,6 +46,8 @@ export interface NarrateRequest {
   recentLines: string[];
   /** プレイヤーからの話しかけ（STT・任意・§7.5）。あれば応答に反映する。 */
   userMessage?: string;
+  /** 沈黙が続いたための自発発話か（任意・ticket 15）。実況ではなく雑談させる。 */
+  isIdle?: boolean;
 }
 
 /**

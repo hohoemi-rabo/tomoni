@@ -8,7 +8,7 @@ import {
   RECENT_LINES_KEEP,
   TTS_VOICES,
 } from "@/lib/config";
-import { useAutoNarration } from "@/hooks/useAutoNarration";
+import { type SendPayload, useAutoNarration } from "@/hooks/useAutoNarration";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useTts } from "@/hooks/useTts";
 
@@ -107,11 +107,7 @@ export default function SessionClient({
 
   // 1回の実況送信：07 をストリーム fetch → 逐次表示＋逐次読み上げ。
   const onSend = useCallback(
-    async (
-      imageBase64: string,
-      recentLinesArg: string[],
-      userMessage?: string,
-    ) => {
+    async ({ imageBase64, recentLines, userMessage, isIdle }: SendPayload) => {
       ttsRef.current.reset(); // 新しい発言。前の再生/バッファを破棄。
       setCurrentText("");
 
@@ -121,8 +117,9 @@ export default function SessionClient({
         body: JSON.stringify({
           playthroughId,
           imageBase64,
-          recentLines: recentLinesArg,
+          recentLines,
           userMessage: userMessage?.trim() || undefined,
+          isIdle,
         }),
       });
       if (!res.ok || !res.body) {
@@ -155,7 +152,14 @@ export default function SessionClient({
     [playthroughId],
   );
 
-  const auto = useAutoNarration({ videoRef, onSend });
+  // 読み上げが終わるまで自発発話を待たせる。撃つと onSend 冒頭の reset() で
+  // 前の発言が途中で切れる（アイドル発話は読み上げ 20〜30 秒に対し間隔 20 秒）。
+  const canIdle = useCallback(
+    () => !ttsRef.current.speaking && ttsRef.current.queueLength === 0,
+    [],
+  );
+
+  const auto = useAutoNarration({ videoRef, onSend, canIdle });
   addRecentRef.current = auto.addRecentLine;
 
   // STT（音声で話しかける・ticket 13・任意）。認識テキストを手動トリガーに添えて送る。

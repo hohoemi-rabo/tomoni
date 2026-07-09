@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import VideoPreview from "@/components/VideoPreview";
-import { useAutoNarration } from "@/hooks/useAutoNarration";
+import { type SendPayload, useAutoNarration } from "@/hooks/useAutoNarration";
 
 /**
  * 映像取り込み（ticket 03）＋自動実況ループ（ticket 04）の暫定確認デモ。
@@ -25,12 +25,12 @@ export default function CaptureTestClient() {
 
   // モック送信: 実APIの代わりに約0.8秒かけて完了する（busy 挙動の再現）。
   const onSend = useCallback(
-    async (imageBase64: string, recentLines: string[]) => {
+    async ({ imageBase64, recentLines, isIdle }: SendPayload) => {
       const n = sendCountRef.current + 1;
       sendCountRef.current = n;
       setSendCount(n);
       pushLog(
-        `送信#${n}: ${Math.round((imageBase64.length * 3) / 4 / 1024)}KB / recent=${recentLines.length}`,
+        `送信#${n}${isIdle ? "[自発]" : "[変化]"}: ${Math.round((imageBase64.length * 3) / 4 / 1024)}KB / recent=${recentLines.length}`,
       );
       await new Promise((r) => setTimeout(r, 800));
       addRecentRef.current(`（送信#${n} の擬似応答）`);

@@ -10,15 +10,34 @@
 
 ## Todo
 
-- [ ] `src/lib/config.ts` に `IDLE_CHATTER_MS`（自発発話までの沈黙時間・目安 20000ms）を追加
-- [ ] `src/hooks/useAutoNarration.ts` に最終送信時刻を保持し、`IDLE_CHATTER_MS` 超過で変化検知を迂回して送信する
-- [ ] 自発発話は `enabled` のときだけ発火し、`busyRef.current`（生成中）なら見送る
-- [ ] `SendFn` に「これは静止中の自発発話である」ことを伝える引数（`isIdle`）を追加
-- [ ] `SessionClient.tsx` の `onSend` から `/api/narrate` へ `isIdle` を渡す
-- [ ] `/api/narrate` の入力検証に `isIdle`（任意 boolean）を追加し、`buildSystemPrompt` へ透過させる
-- [ ] `src/lib/prompt.ts` に `isIdle` 用セクションを追加：「画面は止まっている。実況せず、昔話・トリビア・励まし・雑談で間を持たせて」
-- [ ] 自発発話が連続しても同じ話を繰り返さないこと（既存の `recentLines` で担保されるか確認し、足りなければ保持件数を増やす）
-- [ ] 録画モード中（`fixed inset-0` オーバーレイ表示中）も自発発話が動くことを確認
+### 実装時の逸脱（理由つき）
+
+**① アイドル指示を `prompt.ts` に置かなかった。**
+当初 Todo は「`prompt.ts` に `isIdle` セクションを追加し `buildSystemPrompt` へ透過」としていたが、これは**チケット14と同じ罠**になる。厳守リストの「今起きていることを自分から実況する」と、アイドルの「実況するな」が同一システムプロンプト内で殴り合う。
+
+そこで「そのターンで実況するか雑談するか」というモード選択を、**画像に隣接する `route.ts` の `NARRATE_TURN_TEXT` / `IDLE_TURN_TEXT` 2定数だけ**に集約した。`prompt.ts:44` からは常時の「実況しろ」を外し、「実況」は三つの顔の選択肢として残した。`buildSystemPrompt` は `isIdle` を受け取らない。
+
+**アイドル文に発話長や読み上げ前提を再掲していない。** それらは `prompt.ts` にある。足した情報は「実況するな・話題はひとつ」だけ。
+
+**② 読み上げ中は自発発話を見送るガードを足した。**
+実測で、アイドル発話は6〜9文・読み上げ20〜60秒。間隔20秒では**毎回かならず次の発話に切り落とされ、機能が自壊する**。`IDLE_TURN_TEXT` から選択肢の列挙を削り「話題はひとつだけ」に絞って短縮したうえで、`useAutoNarration` に `canIdle?: () => boolean` を追加し、`SessionClient` が `!tts.speaking && tts.queueLength === 0` を渡す。長さの指示を重ねて足す（＝14の罠）ことを避けた対処。
+
+### 実装
+
+- [×] `src/lib/config.ts` に `IDLE_CHATTER_MS = 20000` を追加（発火粒度は `AUTO_NARRATE_INTERVAL_MS` 刻み・放置がそのまま課金になる旨をコメント）
+- [×] `RECENT_LINES_KEEP` を `5` → `8` に（20秒間隔だと5件＝約100秒ぶんしか覚えられず話題が一巡する）
+- [×] `useAutoNarration` に `lastSentAtRef` を追加。唯一の送信集約点である `send()` 内で、送信決定時点に更新（生成時間を沈黙に数えない・手動/STTでも時計が戻る）
+- [×] ループ tick を2分岐に。変化があれば通常送信して `return`、無ければ沈黙時間を見て自発送信
+- [×] `useEffect` 冒頭で `lastSentAtRef` を初期化（OFF→ON 直後に古い時計で即発火しない）
+- [×] 自発発話は `enabled` のときだけ発火し、`busyRef.current`（生成中）なら tick 冒頭で抜ける
+- [×] `SendFn` をオブジェクト payload（`SendPayload`）に変更し `isIdle` を追加。位置引数だと TS の関数代入規則で `capture-test` のモックが無警告で `isIdle` を落とすため、型検査に直し忘れを捕まえさせる
+- [×] `SessionClient.tsx` / `CaptureTestClient.tsx` を payload 受けに（後者は `[自発]`/`[変化]` をログ表示）
+- [×] `SessionClient.tsx` の `onSend` から `/api/narrate` へ `isIdle` を渡す
+- [×] `NarrateRequest` に `isIdle?: boolean` を追加。`/api/narrate` の入力検証で任意 boolean を検証
+- [×] `userMessage` があるときは `isIdle` を無視する（話しかけへの応答を優先）
+- [×] `route.ts` の user part text を `isIdle` で出し分け（上記①）
+- [×] 自発発話が連続しても同じ話を繰り返さないこと（`recentLines` で担保されることを実測で確認）
+- [ ] 録画モード中（`fixed inset-0` オーバーレイ表示中）も自発発話が動くことを確認（**開発者の実機確認**。`recording` は表示切替のみでループを止めない）
 
 ## 完了条件
 
@@ -31,3 +50,5 @@
 - **コストが増える**。静止しているほど喋るため、放置時間がそのまま課金になる。`IDLE_CHATTER_MS` は大きめ（20〜30秒）から始めて詰める。
 - 自発発話でも画像は送る（画面を見ている前提を崩さない）。ただしプロンプトで「実況するな」と明示する。
 - タイマーは `AUTO_NARRATE_INTERVAL_MS` の tick 内で経過時間を見れば足りる。新しい `setInterval` を増やさない。
+- **モード指示を2箇所に書かない**（チケット14の教訓）。「実況するか雑談するか」は `route.ts` の2定数だけが決める。発話長・読み上げ前提は `prompt.ts` だけが持つ。
+- 自発発話は `canIdle`（読み上げ中でないこと）を満たすまで待つ。沈黙時間は「最後に**送信を始めて**からの経過」であり、読み上げ終了からの経過ではない。したがって読み上げが長引いた直後は、ほぼ間を置かず次の発話が始まる。

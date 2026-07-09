@@ -18,6 +18,13 @@ export const AUTO_NARRATE_INTERVAL_MS = 4000;
  */
 export const FRAME_DIFF_THRESHOLD = 0.02;
 
+/**
+ * 最後に喋ってからこの時間だけ沈黙が続いたら、変化検知を迂回して自発発話する。
+ * 発火粒度は AUTO_NARRATE_INTERVAL_MS 刻みなので、実際は 20〜24 秒。
+ * 静止しているほど喋る＝放置時間がそのまま課金になる。大きめから詰める。
+ */
+export const IDLE_CHATTER_MS = 20000;
+
 /** 送信前ダウンスケールの長辺ピクセル数。FC版の低解像度なら十分読める。 */
 export const FRAME_DOWNSCALE_LONG_EDGE_PX = 512;
 
@@ -30,8 +37,11 @@ export const FRAME_JPEG_QUALITY = 0.7;
  */
 export const FRAME_DIFF_SAMPLE_LONG_EDGE_PX = 64;
 
-/** 「直前と同じことを繰り返さない」ためにプロンプトへ渡す直近AI発言の保持件数。 */
-export const RECENT_LINES_KEEP = 5;
+/**
+ * 「直前と同じことを繰り返さない」ためにプロンプトへ渡す直近AI発言の保持件数。
+ * 自発発話が IDLE_CHATTER_MS ごとに続くと話題が一巡するため、数分ぶんを覚えておく。
+ */
+export const RECENT_LINES_KEEP = 8;
 
 /** 既定の読み上げボイス（Chirp3-HD・日本語）。調整可能。 */
 export const DEFAULT_TTS_VOICE = "ja-JP-Chirp3-HD-Aoede";
