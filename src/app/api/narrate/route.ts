@@ -107,7 +107,7 @@ export async function POST(req: Request): Promise<Response> {
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
               {
-                text: "今の画面です。戦友として、今この瞬間に起きていることを能動的に短く話してください。",
+                text: "今の画面です。戦友として、今この瞬間に起きていることを能動的に話してください。",
               },
             ],
           },

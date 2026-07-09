@@ -5,7 +5,10 @@
  * ハードコードを各所に散らさず、後でまとめてチューニングできるようにする。
  */
 
-/** 自動実況ループでフレームを評価する間隔（ミリ秒）。数秒テンポが前提。 */
+/**
+ * 自動実況ループでフレームを評価する間隔（ミリ秒）。数秒テンポが前提。
+ * 生成中は次の送信を抑止するため、これを詰めても体感は生成速度で頭打ちになる。
+ */
 export const AUTO_NARRATE_INTERVAL_MS = 4000;
 
 /**
@@ -13,7 +16,7 @@ export const AUTO_NARRATE_INTERVAL_MS = 4000;
  * 前回送信フレームとの差分がこの値を超えたときだけ Gemini に送る。
  * 小さいほど敏感（送信回数が増える＝コスト増）。
  */
-export const FRAME_DIFF_THRESHOLD = 0.05;
+export const FRAME_DIFF_THRESHOLD = 0.02;
 
 /** 送信前ダウンスケールの長辺ピクセル数。FC版の低解像度なら十分読める。 */
 export const FRAME_DOWNSCALE_LONG_EDGE_PX = 512;

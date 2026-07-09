@@ -18,7 +18,7 @@ import type { State } from "@/lib/types";
  * - APIキーはこの Route Handler 内（サーバ）でのみ使う。
  */
 
-/** 要約プロンプト。攻略・ネタバレを禁じ、継続性のためのあらすじに絞る。 */
+/** 要約プロンプト。攻略手順を禁じ、継続性のためのあらすじに絞る。 */
 const END_SESSION_SYSTEM = [
   "あなたは、プレイヤーの隣で一緒に戦う戦友AIです。",
   "以下は今回のセッションであなたが話した実況ログです。これを踏まえ、次回再開時に",
@@ -27,7 +27,7 @@ const END_SESSION_SYSTEM = [
   "- last_session_summary: 今回の流れ・気持ちを戦友視点で3〜6文。話し言葉でよい。",
   "- progress: 現在の進捗の短いメモ（1文程度・分かる範囲で。無理なら省略可）。",
   "",
-  "厳守: 攻略手順・最適手・正解ルートは書かない。先の章の展開などネタバレも書かない。",
+  "厳守: 攻略手順・最適手・正解ルートは書かない。",
   "画面から読み取れない断定（正確な数値や、文字が出ていないキャラ名の断定）はしない。",
 ].join("\n");
 
@@ -110,7 +110,7 @@ export async function POST(req: Request): Promise<Response> {
                 last_session_summary: {
                   type: Type.STRING,
                   description:
-                    "戦友視点で今回の流れを3〜6文。攻略やネタバレは書かない。",
+                    "戦友視点で今回の流れを3〜6文。攻略手順は書かない。",
                 },
                 progress: {
                   type: Type.STRING,
