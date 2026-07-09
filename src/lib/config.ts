@@ -82,5 +82,17 @@ export const KNOWLEDGE_FETCH_TIMEOUT_MS = 15000;
 /** 参照URL1件から取り込む本文の上限文字数（トークンと事故の上限）。 */
 export const KNOWLEDGE_MAX_TEXT_CHARS = 300000;
 
-/** 章ごとのLLM抽出を何件まで同時に走らせるか。 */
-export const KNOWLEDGE_EXTRACT_CONCURRENCY = 4;
+/**
+ * 章ごとのLLM抽出を何件まで同時に走らせるか。
+ * 混雑時に自分で圧をかけないよう控えめにする（1章の失敗が名簿の欠落に直結するため、
+ * 速さより完走を優先する）。
+ */
+export const KNOWLEDGE_EXTRACT_CONCURRENCY = 2;
+
+/**
+ * 章ごとの抽出リトライ。`withRetry` の既定（3回・500ms 起点＝合計1.5秒）では、
+ * Gemini の 503（数十秒続く高負荷スパイク）を吸収できず章が欠ける（実測）。
+ * 5回・2秒起点なら 2+4+8+16 で30秒ほど粘る。
+ */
+export const KNOWLEDGE_EXTRACT_RETRIES = 5;
+export const KNOWLEDGE_EXTRACT_BASE_DELAY_MS = 2000;

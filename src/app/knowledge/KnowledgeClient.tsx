@@ -126,7 +126,7 @@ export default function KnowledgeClient() {
         </button>
         {extracting && (
           <span className="text-sm text-black/60 dark:text-white/60">
-            章ごとにLLMへ問い合わせています。25章だと少し時間がかかります。
+            章ごとにLLMへ問い合わせています。25章だと2分ほどかかります。
           </span>
         )}
       </div>
@@ -134,8 +134,10 @@ export default function KnowledgeClient() {
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {failed.length > 0 && (
         <p className="text-sm text-red-600 dark:text-red-400">
-          第 {failed.join("・")} 章の抽出に失敗しました。この章の仲間が抜けたまま
-          以降の章に累積されているので、保存せずに再取得してください。
+          第 {failed.join("・")} 章の抽出に失敗しました。失敗した章で加わる仲間が抜けたまま
+          以降の章へ累積されているため、<strong>第 {Math.min(...failed)} 章以降は保存しないでください</strong>。
+          それより前の章は正しいので、そこまで保存し、もう一度「取得して下書きを作る」を押して
+          残りを取り直してください。
         </p>
       )}
       {savedMessage && (

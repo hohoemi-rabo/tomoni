@@ -4,7 +4,9 @@ import path from "node:path";
 
 import {
   GEMINI_STATE_MODEL,
+  KNOWLEDGE_EXTRACT_BASE_DELAY_MS,
   KNOWLEDGE_EXTRACT_CONCURRENCY,
+  KNOWLEDGE_EXTRACT_RETRIES,
   KNOWLEDGE_FETCH_TIMEOUT_MS,
   KNOWLEDGE_MAX_TEXT_CHARS,
   KNOWLEDGE_MAX_URLS,
@@ -180,18 +182,23 @@ function cleanTitle(raw: unknown): string | undefined {
 }
 
 async function extractCast(chunk: ChapterChunk): Promise<ChapterCast> {
-  const result = await withRetry(() =>
-    getGeminiClient().models.generateContent({
-      model: GEMINI_STATE_MODEL,
-      contents: chunk.text,
-      config: {
-        systemInstruction: EXTRACT_SYSTEM,
-        responseMimeType: "application/json",
-        responseSchema: CAST_SCHEMA,
-        thinkingConfig: { thinkingBudget: 0 },
-        safetySettings: SAFETY_SETTINGS_BLOCK_NONE,
-      },
-    }),
+  const result = await withRetry(
+    () =>
+      getGeminiClient().models.generateContent({
+        model: GEMINI_STATE_MODEL,
+        contents: chunk.text,
+        config: {
+          systemInstruction: EXTRACT_SYSTEM,
+          responseMimeType: "application/json",
+          responseSchema: CAST_SCHEMA,
+          thinkingConfig: { thinkingBudget: 0 },
+          safetySettings: SAFETY_SETTINGS_BLOCK_NONE,
+        },
+      }),
+    {
+      retries: KNOWLEDGE_EXTRACT_RETRIES,
+      baseDelayMs: KNOWLEDGE_EXTRACT_BASE_DELAY_MS,
+    },
   );
   const parsed = JSON.parse(result.text ?? "{}") as {
     title?: unknown;
