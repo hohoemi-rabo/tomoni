@@ -6,11 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **ともに / Tomoni** — 苦手なシミュレーションRPGを、画面を見て実況・昔話・励ましをしてくれる「戦友AI」と一緒にクリアを目指す**自分専用ツール**。最終成果物は YouTube 動画で、アプリはその道具。題材は MVP では **ファミコン版『ファイアーエムブレム 暗黒竜と光の剣』（1990 / FE1）の1本特化**。認証・公開・デプロイは無く、開発者のローカルPCで完結する。
 
-`REQUIREMENTS.md` が **Phase 1（MVP）の実装指示書**であり、実装の唯一の信頼できる仕様。コンセプト・スコープ・データモデル・API設計はすべて `REQUIREMENTS.md` を一次情報として参照すること。
+`REQUIREMENTS.md` が実装の**唯一の信頼できる仕様**。コンセプト・スコープ・データモデル・API設計はすべて `REQUIREMENTS.md` を一次情報として参照すること。**方針転換があったら、コードより先に `REQUIREMENTS.md` を直す**（そうしないと、次にこのリポジトリを触ったとき仕様書を根拠に元へ戻してしまう）。
 
-**実装の進捗は `docs/00-index.md` のチケット No.（01〜13）と各チケットの `## Todo` で管理する**。完了チケットの再実装や、未完チケットの先読み実装をしないこと。現状は下記「現在の実装状況」を参照。
+**実装の進捗は `docs/00-index.md` のチケット No. と各チケットの `## Todo` で管理する**。完了チケットの再実装や、未完チケットの先読み実装をしないこと。現状は下記「現在の実装状況」を参照。
 
-**Phase 1（MVP）は全13チケット実装完了**（各 `docs/*.md` の Todo は `- [×]` 済み）。以降は新たな要件を新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。実機での通し確認（OBS仮想カメラ→自動実況→読み上げ→録画モード→STT）は開発者の手動確認に委ねる。
+**Phase 1（MVP・01〜13）と Phase 2（14〜17）は実装完了。** 以降は新たな要件を新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。
+
+### 企画の核（14 で方針転換した。古い前提で判断しないこと）
+
+- **ネタバレはしてよい**（14 で禁止を撤廃）。「一緒に初見で驚く」より「誰かと一緒にやっている実感」を優先する。
+- **攻略アドバイスはしない**（維持）。線引きは **「事実は語る、手順は言わない」**。「あの剣士はナバール。実は仲間になる」＝OK ／「シーダで話しかけて」＝NG。
+- **参照サイトからの取得はしてよい**（16 で禁止を撤廃）。ただし `/knowledge` での**名簿化のための一度きりの取得**に限る。散文（攻略手順）は捨て、目視確認してから保存する。実況ループからは取得しない。攻略ナレッジの大量注入と RAG は引き続き禁止。
+
+### 未確認・宿題
+
+- **章キャスト表がまだ1枚も無い**（`knowledge/fe-fc/chapters/` は空）。`/knowledge` から取得・目視確認・保存すれば埋まる。それまで AI は画面に名前が出ても照合先が無く、固有名を断定しない。
+- 実機での通し確認（OBS仮想カメラ→自動実況→読み上げ→録画モード→STT、静止中の自発発話）は開発者の手動確認に委ねる。
 
 ## 開発チケットと Todo 運用
 
@@ -29,7 +40,11 @@ npm run start   # ビルド済みを起動
 npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 ```
 
-テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` / `sentence.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。API Route（`/api/narrate` / `/api/tts` / `/api/end-session`）は `npm run dev` 起動後に `curl` で疎通・異常系を確認。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存は開発者が手動確認（映像取り込み・自動ループは `/capture-test`、読み上げは `/tts-test`、セッション統合・録画モード・STT は `/session/[id]`。STT は Web Speech のため Chrome 系のみ）。
+テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` / `sentence.ts` / `knowledge-extract.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。API Route（`/api/narrate` / `/api/tts` / `/api/end-session` / `/api/knowledge/*`）は `npm run dev` 起動後に `curl` で疎通・異常系を確認。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存は開発者が手動確認（映像取り込み・自動ループ・自発発話は `/capture-test`、読み上げは `/tts-test`、セッション統合・録画モード・STT は `/session/[id]`、キャスト表生成は `/knowledge`。STT は Web Speech のため Chrome 系のみ）。
+
+- `@google/genai` 等の依存を使う検証スクリプトは、**プロジェクト直下に置いて実行する**（scratchpad からだと `node_modules` を解決できない）。実行後に消すこと。
+- 自発発話（15）を待たずに確認したいときは `IDLE_CHATTER_MS` を一時的に `4000` へ下げ、`/capture-test` に静止画を映す。ログに `[自発]` / `[変化]` が出る。
+- DB を書き換える検証は、ダミー行を作って試し、**必ず消す**。`WHERE` 無しの `UPDATE`/`DELETE` は実行しない。
 
 > **注意**: `npm run dev` 起動中に `npm run build` を実行すると `.next` が壊れて実行中の dev サーバが 500 を返す。build する時は dev を止めてから。検証用の一時 JPEG が要るとき（narrate の curl 等）は Pillow/ImageMagick が無い環境では `curl https://picsum.photos/256.jpg` で取得できる（1x1 の極小 JPEG は Gemini が "Unable to process image" で弾く）。
 
@@ -37,7 +52,7 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 
 - **Next.js 15（App Router）+ React 19 + TypeScript（strict）**、Tailwind CSS v3.4。`@/*` は `src/*` にエイリアス。
 - **DB**: Supabase（`@supabase/supabase-js`・RLS/認証なし・ローカル単一ユーザー）。導入済み。専用プロジェクト `tomoni`（ref `enwzuxfufsnvghivcyut`・ap-northeast-1）。スキーマは `supabase/migrations/0001_init.sql`。接続情報は `.env.local`（`SUPABASE_URL` / `SUPABASE_ANON_KEY`・git 管理外）。
-- **AI**: Google Gen AI SDK（`@google/genai`）。画面実況（Vision・主役）は `gemini-2.5-flash`、任意の state 更新は `gemini-2.5-flash-lite`。`thinkingConfig.thinkingBudget: 0`（テンポ優先）、`safetySettings` 全カテゴリ `BLOCK_NONE`（戦闘・戦死で空応答にならないため）。一時エラーは `withRetry`（指数バックオフ・最大3回）。
+- **AI**: Google Gen AI SDK（`@google/genai`）。画面実況（Vision・主役）は `gemini-2.5-flash`、state 更新と章キャスト表の抽出は `gemini-2.5-flash-lite`。`thinkingConfig.thinkingBudget: 0`（テンポ優先）、`safetySettings` 全カテゴリ `BLOCK_NONE`（戦闘・戦死で空応答にならないため）。一時エラーは `withRetry`（指数バックオフ・既定3回／500ms 起点）。**既定は 503 の高負荷スパイクに耐えられない**ので、章抽出だけ 5回／2秒起点に上げてある（`KNOWLEDGE_EXTRACT_RETRIES`）。
 - **音声合成**: Google Cloud Text-to-Speech を REST 直叩き（Chirp3-HD ボイス）。
 - **APIキーはすべてサーバ専用**。`GEMINI_API_KEY` / `GOOGLE_TTS_API_KEY` を使い、`NEXT_PUBLIC_` を絶対に付けない。
 
@@ -46,8 +61,8 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 「フレーム取得 → 送信 → 生成 → 読み上げ」のループが本体。
 
 1. **画面取り込み（新規・本体）**: OBSバーチャルカメラを `getUserMedia` で偽カメラとして受け取り `<video>` にプレビュー。映像ソース取り込みは**差し替え可能な1モジュール**として抽象化する（将来 `getDisplayMedia` も足せるように）。
-2. **自動実況ループ**: `<video>` の現フレームを canvas → JPEG(base64) 化、**長辺512px程度にダウンスケール**、前回送信フレームとのピクセル差分で**変化があったときだけ** Gemini に送る（SLGはターン制で静止しがち＝同じ発言の繰り返しとコストを同時に防ぐ）。間隔・しきい値は調整可能な定数に。直近のAI発言を数件メモリ保持し「繰り返さない」よう渡す。
-3. **実況API `POST /api/narrate`（ストリーミング）**: 入力 `{ playthroughId, imageBase64, recentLines }`。サーバで state(任意)＋persona＋FEプライマー＋直近発言からシステムプロンプトを組み、画像1枚＋指示を Gemini(Vision) へ。`generateContentStream` の `chunk.text` を `ReadableStream` で返す。
+2. **自動実況ループ**: `<video>` の現フレームを canvas → JPEG(base64) 化、**長辺512px程度にダウンスケール**、前回送信フレームとのピクセル差分で**変化があったときだけ** Gemini に送る（SLGはターン制で静止しがち＝同じ発言の繰り返しとコストを同時に防ぐ）。変化が無いまま `IDLE_CHATTER_MS` 沈黙したら、検知を迂回して**自分から喋る**（15）。間隔・しきい値は調整可能な定数に。直近のAI発言を数件メモリ保持し「繰り返さない」よう渡す。
+3. **実況API `POST /api/narrate`（ストリーミング）**: 入力 `{ playthroughId, imageBase64, recentLines, userMessage?, isIdle? }`。サーバで state(任意)＋persona＋FEプライマー＋直近発言からシステムプロンプトを組み、画像1枚＋指示を Gemini(Vision) へ。`generateContentStream` の `chunk.text` を `ReadableStream` で返す。
 4. **TTS `/api/tts`**: Cloud TTS REST → base64 mp3。クライアントは文末確定ごとに逐次再生キュー（`useTts`）へ流す。
 5. **録画モードUI**: 会話以外を隠し全幅化・文字サイズ切替（OBS録画前提）。
 
@@ -55,28 +70,41 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 
 AIの**感情・反応を正しくする前提**と**今この章に誰がいるか**の最小限。2階建て:
 - `knowledge/fe-fc/fe-primer.md` — 全章共通プライマー1枚。システムプロンプト先頭に固定。
-- `knowledge/fe-fc/chapters/chapter-XX.md` — 章ごとのキャスト表（ゼロ埋め番号）。`state.chapter` に対応する**1ファイルだけ**注入する（全章一括注入はトークン肥大）。番号で引くだけの最小リトリーバル。ローダーは `src/lib/knowledge.ts`（`loadPrimer` / `loadChapterCast`）。作り方は `knowledge/fe-fc/README.md`（§8.4 スクショ→名簿化）。
+- `knowledge/fe-fc/chapters/chapter-XX.md` — 章ごとのキャスト表（ゼロ埋め番号）。`state.chapter` に対応する**1ファイルだけ**注入する（全章一括注入はトークン肥大）。番号で引くだけの最小リトリーバル。ローダーは `src/lib/knowledge.ts`（`loadPrimer` / `loadChapterCast` / `chapterFileName`）。作り方は `knowledge/fe-fc/README.md`（`/knowledge` から生成、またはスクショ→名簿化）。**現在このディレクトリは空。**
+  - 自軍は第1章からの**累積**（その時点で画面にいる全員が要るため）。敵はその章だけ。
+  - **中身が空のテンプレを置かない。** `buildSystemPrompt` は非空なら注入するので、プレースホルダがそのままキャスト表としてAIに渡る（実際にそうなっていたので削除した）。ファイルが無ければ丸ごとスキップされる＝無いほうが正しい。
 
 データモデル（Supabase `playthroughs` / 緩い `state` jsonb / 任意の `messages`）は `REQUIREMENTS.md §9` 参照。
 
 ### 現在の実装状況（モジュール地図）
 
-完了チケット 01〜13（全チケット完了）。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
+完了チケット 01〜17（全チケット完了）。各モジュールは他チケットから `@/lib/*` 等で再利用する（再発明しない）。
 
 - **基盤（01）**: `src/lib/env.ts`（サーバ専用キーの遅延検証アクセサ）・`src/lib/config.ts`（調整可能な定数を一元管理）・`src/lib/retry.ts`（`withRetry`・指数バックオフ）・`src/lib/types.ts`（`State`/`Persona`/`Playthrough`/`Message`/`NarrateRequest`）。
 - **データ層（02）**: `src/lib/supabase.ts`（`server-only` クライアント）・`src/lib/playthroughs.ts`（CRUD＋`state` 部分更新）・`src/lib/persona.ts`（`DEFAULT_PERSONA`）。
 - **映像取り込み（03）**: `src/lib/video/types.ts`（`VideoSource` 抽象）・`src/lib/video/userMediaSource.ts`（`getUserMedia` 実装）・`src/components/VideoPreview.tsx`（`'use client'` プレビュー・`onVideoElement`/`onStreamChange` で親へ受け渡し）。
-- **自動実況ループ（04）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・変化検知ゲート・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend` で注入）。
+- **自動実況ループ（04・15）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・変化検知ゲート・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend: (p: SendPayload) => Promise<void>` で注入。`SendPayload` は `{ imageBase64, recentLines, userMessage?, isIdle? }`）。tick は2分岐で、変化があれば通常送信、無ければ `lastSentAtRef` を見て自発発話（15）。**自発発話は `canIdle()` が真のときだけ**（SessionClient が `!tts.speaking && tts.queueLength === 0` を渡す。読み上げ中に撃つと `onSend` 冒頭の `reset()` で前の発言が途中で切れる）。
 - **知識（05）**: 上記 `knowledge/fe-fc/` と `src/lib/knowledge.ts`。
-- **プロンプト（06）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。
-- **実況API（07）**: `src/lib/gemini.ts`（`server-only` の遅延クライアント `getGeminiClient`＋全カテゴリ `BLOCK_NONE` の `SAFETY_SETTINGS_BLOCK_NONE`。07/12 で共有）・`src/app/api/narrate/route.ts`（入力検証→state/persona取得→知識読込→06でプロンプト→`gemini-2.5-flash` の `generateContentStream` を `ReadableStream` で返す。確立のみ `withRetry`、開始前エラーは `{ error }` JSON）。`@google/genai` 導入済み。
+- **プロンプト（06・14）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。**発話長の指示はこの1行だけに置く**（プライマー・`persona.tone`・Route に重複させない。後から注入された方が勝って打ち消し合う）。**「実況するか雑談するか」のモード選択はここに書かない**（`route.ts` の2定数が持つ）。
+- **実況API（07）**: `src/lib/gemini.ts`（`server-only` の遅延クライアント `getGeminiClient`＋全カテゴリ `BLOCK_NONE` の `SAFETY_SETTINGS_BLOCK_NONE`。07/12 で共有）・`src/app/api/narrate/route.ts`（入力検証→state/persona取得→知識読込→06でプロンプト→`gemini-2.5-flash` の `generateContentStream` を `ReadableStream` で返す。確立のみ `withRetry`、開始前エラーは `{ error }` JSON）。**そのターンで実況させるか雑談させるかは、画像に隣接する `NARRATE_TURN_TEXT` / `IDLE_TURN_TEXT` の2定数だけが決める**（`isIdle` で出し分け。`userMessage` があれば `isIdle` を無視して応答を優先）。`@google/genai` 導入済み。
 - **TTS（08）**: `src/lib/sentence.ts`（`takeSentences`・純関数の文末分割）・`src/app/api/tts/route.ts`（Cloud TTS REST 直叩き→`{ audioBase64 }`・`withRetry`・`{ error }` JSON）・`src/hooks/useTts.ts`（`'use client'`・`feed`/`flush`/`reset`＋1文先読みパイプライン再生キュー・ON/OFF・ボイス選択）。ボイス候補は `config.ts` の `TTS_VOICES`。
-- **トップ（09）**: `src/app/page.tsx`（`force-dynamic` の Server Component・`listPlaythroughs` で一覧・各項目から `/session/[id]` へ）・`src/app/NewPlaythroughForm.tsx`（`'use client'`・`useActionState`）・`src/app/actions.ts`（`'use server'` の `createPlaythroughAction`・入力検証＋`revalidatePath('/')`）。
+- **トップ（09・17）**: `src/app/page.tsx`（`force-dynamic` の Server Component・`listPlaythroughs` で一覧・各項目から `/session/[id]` へ・末尾に `/knowledge` への導線）・`src/app/NewPlaythroughForm.tsx`（`'use client'`・`useActionState`）・`src/app/DeletePlaythroughButton.tsx`（`'use client'`・`window.confirm` で確認）・`src/app/actions.ts`（`'use server'` の `createPlaythroughAction` / `deletePlaythroughAction`・入力検証＋`revalidatePath('/')`）。削除時 `messages` は DB の `on delete cascade` で消える（アプリ側で消さない）。
 - **セッション画面（10）+ 録画モード（11）**: `src/app/session/[id]/page.tsx`（Server Component・`params` を `await`・`getPlaythrough`→無ければ `notFound()`）・`src/app/session/[id]/SessionClient.tsx`（`'use client'` 統合本体。VideoPreview＋useAutoNarration＋useTts を配線。`onSend` で `/api/narrate` をストリーム fetch→逐次表示＋`useTts.feed`、直近発言を保持・表示。onSend↔addRecentLine の循環は ref で解消）。**MVP完成条件（取り込み→自動実況→読み上げ）がこの画面で通る。** 録画モードは同ファイル内の `fixed inset-0` 全画面オーバーレイ（単色背景に AI発言＝`currentText` だけ中央大表示・文字サイズ段階 `RECORDING_FONT_STEPS`・Esc/終了で解除・ループは止めない）。
 - **state更新／継続性（12）**: `src/app/api/end-session/route.ts`（`POST`・実況ログを `gemini-2.5-flash-lite` で構造化JSON要約→`last_session_summary`/`progress` を生成、`chapter` は手入力を反映、`updatePlaythroughState` で jsonb マージ）。SessionClient に「セッション終了して保存」UI（到達章入力＋保存・`sessionLinesRef` で全発言保持）。再開時は `buildStateLines` が `last_session_summary` を「前回までのあらすじ」として注入（配線済み）。
 - **STT／音声で話しかける（13・任意）**: `src/hooks/useSpeechRecognition.ts`（`'use client'`・Web Speech の最小ラッパ・非対応時 `supported=false`）。SessionClient で「押して話す」→認識テキストを `useAutoNarration.triggerNow(userMessage)` 経由で送信。`/api/narrate` は `userMessage`（任意）を受け、`buildSystemPrompt` が「プレイヤーからの話しかけ」セクションとして注入する。
 - **章キャスト表の生成（16）**: `src/lib/knowledge-extract.ts`（純関数のみ・`detectCharset`/`decodeHtml`/`htmlToText`/`splitChapters`/`accumulateAllies`/`renderChapterMarkdown`。`node --experimental-strip-types` で直接検証できる）・`src/app/api/knowledge/extract/route.ts`（URL取得→章分割→章ごとに `gemini-2.5-flash-lite` で**構造化JSONだけ**抽出。整形は純関数。**ファイルは書かない**）・`src/app/api/knowledge/save/route.ts`（目視確認後に書き出す。**リポジトリ内で唯一の `writeFile`**。パスは章番号からサーバ側で組み立てる）・`src/app/knowledge/`（`/knowledge` ページ）。落とし穴は `docs/16-knowledge-builder.md` の「実装時に分かったこと」を読むこと（セル区切り・`required`/`propertyOrdering`・職業で敵味方を判断させない・1章の失敗で全滅させない）。
 - **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。`/knowledge`（`src/app/knowledge/`）は 16 の一度きりの道具。いずれも実況ループから独立した切り分けツールとして**残す**。
+
+### 落とし穴（実測で踏んだ。同じ穴を掘らないこと）
+
+- **同じ趣旨の指示を2箇所に書かない。** 発話長が `prompt.ts` / `fe-primer.md` / `persona.tone` / `narrate route` の4箇所に散っており、**後から注入された方が先を打ち消していた**（`persona.tone` は厳守リストの末尾に入る）。1箇所に集約する。
+- **`fe-primer.md` はシステムプロンプトの先頭に固定注入される。** ここに禁止指示が残っていると、`prompt.ts` を何度書き換えても挙動は変わらない。
+- **`persona` は作成時に DB へコピーされる**（`playthroughs.ts`）。`DEFAULT_PERSONA` を直しても既存プレイスルーには届かない。SQL で更新する。
+- **`responseSchema` の任意フィールドはモデルが黙って省略する。** 指示文で「埋めろ」と書いても無駄。`required` と `propertyOrdering` を明示する（`hp` / `items` が丸ごと落ちた）。読めなかったぶんは 0 / 空配列で返させ、整形側で落とす。
+- **HTML の `</td>` を改行にすると表が壊れる。** 1行が縦に散らばり、LLM が列を対応づけられない。セルは `|`、行は改行。
+- **多数の LLM 呼び出しを `Promise.all` で束ねない。** 1件の 503 で全滅する。失敗は個別に握って呼び出し側へ返す。
+- **`withRetry` の既定（3回・500ms 起点＝1.5秒）は 503 に耐えられない。** 数十秒の高負荷スパイクには 5回・2秒起点で粘る。
+- **LLM に Markdown を書かせない。** 構造化JSONだけ返させ、体裁は純関数で組む（体裁ブレとプロンプト注入の余地を消す）。
 
 ## Next.js 15（App Router）ベストプラクティス
 
