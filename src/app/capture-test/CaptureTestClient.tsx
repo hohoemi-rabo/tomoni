@@ -42,9 +42,14 @@ export default function CaptureTestClient() {
   // 安定参照の addRecentLine をモックから使えるよう ref に載せる。
   addRecentRef.current = auto.addRecentLine;
 
+  // VideoPreview は親が安定参照を渡す前提（SessionClient と同じ理由で固定する）。
+  const handleVideoElement = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+  }, []);
+
   return (
     <div className="flex flex-col gap-4">
-      <VideoPreview onVideoElement={(el) => (videoRef.current = el)} />
+      <VideoPreview onVideoElement={handleVideoElement} />
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">

@@ -91,7 +91,12 @@ export async function POST(req: Request): Promise<Response> {
     const { playthroughId, imageBase64, recentLines, userMessage, isIdle } =
       parseRequest(body);
 
-    const playthrough = await getPlaythrough(playthroughId);
+    // プレイスルー（DB）とプライマー（fs）は独立なので並列に読む。
+    // 現在章のキャスト表だけは state.chapter に依存するため後段で読む（§7.2）。
+    const [playthrough, primer] = await Promise.all([
+      getPlaythrough(playthroughId),
+      loadPrimer(),
+    ]);
     if (!playthrough) {
       throw new NarrateError(
         `プレイスルーが見つかりません: ${playthroughId}`,
@@ -99,11 +104,7 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    // 知識: 全章プライマー（先頭固定）＋現在章のキャスト表1枚だけ（§7.2）。
-    const [primer, chapterCast] = await Promise.all([
-      loadPrimer(),
-      loadChapterCast(playthrough.state.chapter),
-    ]);
+    const chapterCast = await loadChapterCast(playthrough.state.chapter);
 
     const systemPrompt = buildSystemPrompt({
       persona: playthrough.persona,

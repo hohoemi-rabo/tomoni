@@ -41,6 +41,12 @@ export default function SessionClient({
   initialChapter: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // VideoPreview は親が安定参照を渡す前提。インライン関数だとストリーミング中の
+  // チャンク毎の再レンダーで callback ref が作り直され、<video> の ref が
+  // 付け外しされ続けるため useCallback で固定する。
+  const handleVideoElement = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+  }, []);
   // 今回のセッションの全 AI 発言を保持（表示用 recentLines とは別・end-session 用）。
   const sessionLinesRef = useRef<string[]>([]);
 
@@ -176,7 +182,7 @@ export default function SessionClient({
 
   return (
     <div className="flex flex-col gap-5">
-      <VideoPreview onVideoElement={(el) => (videoRef.current = el)} />
+      <VideoPreview onVideoElement={handleVideoElement} />
 
       {/* コントロール: 自動 ON/OFF・手動トリガー・読み上げ ON/OFF・ボイス選択 */}
       <div className="flex flex-wrap items-center gap-4">
