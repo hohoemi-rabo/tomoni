@@ -54,7 +54,7 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 - **DB**: Supabase（`@supabase/supabase-js`・RLS/認証なし・ローカル単一ユーザー）。導入済み。専用プロジェクト `tomoni`（ref `enwzuxfufsnvghivcyut`・ap-northeast-1）。スキーマは `supabase/migrations/0001_init.sql`。接続情報は `.env.local`（`SUPABASE_URL` / `SUPABASE_ANON_KEY`・git 管理外）。
 - **AI**: Google Gen AI SDK（`@google/genai`）。画面実況（Vision・主役）は `gemini-2.5-flash`、state 更新と章キャスト表の抽出は `gemini-2.5-flash-lite`。`thinkingConfig.thinkingBudget: 0`（テンポ優先）、`safetySettings` 全カテゴリ `BLOCK_NONE`（戦闘・戦死で空応答にならないため）。一時エラーは `withRetry`（指数バックオフ・既定3回／500ms 起点）。**既定は 503 の高負荷スパイクに耐えられない**ので、章抽出だけ 5回／2秒起点に上げてある（`KNOWLEDGE_EXTRACT_RETRIES`）。
 - **音声合成**: Google Cloud Text-to-Speech を REST 直叩き（Chirp3-HD ボイス）。
-- **APIキーはすべてサーバ専用**。`GEMINI_API_KEY` / `GOOGLE_TTS_API_KEY` を使い、`NEXT_PUBLIC_` を絶対に付けない。
+- **APIキーはすべてサーバ専用**。`GEMINI_API_KEY` / `GOOGLE_TTS_API_KEY` を使い、`NEXT_PUBLIC_` を絶対に付けない。キーを読む `src/lib/env.ts`（および `supabase.ts` / `gemini.ts`）は `server-only` 付きで、クライアントコンポーネントから import するとビルドで失敗する。
 
 ## アーキテクチャの核（実装時の全体像）
 
@@ -82,7 +82,7 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 
 - **基盤（01）**: `src/lib/env.ts`（サーバ専用キーの遅延検証アクセサ）・`src/lib/config.ts`（調整可能な定数を一元管理）・`src/lib/retry.ts`（`withRetry`・指数バックオフ）・`src/lib/types.ts`（`State`/`Persona`/`Playthrough`/`Message`/`NarrateRequest`）。
 - **データ層（02）**: `src/lib/supabase.ts`（`server-only` クライアント）・`src/lib/playthroughs.ts`（CRUD＋`state` 部分更新）・`src/lib/persona.ts`（`DEFAULT_PERSONA`）。
-- **映像取り込み（03）**: `src/lib/video/types.ts`（`VideoSource` 抽象）・`src/lib/video/userMediaSource.ts`（`getUserMedia` 実装）・`src/components/VideoPreview.tsx`（`'use client'` プレビュー・`onVideoElement`/`onStreamChange` で親へ受け渡し）。
+- **映像取り込み（03）**: `src/lib/video/types.ts`（`VideoSource` 抽象）・`src/lib/video/userMediaSource.ts`（`getUserMedia` 実装）・`src/components/VideoPreview.tsx`（`'use client'` プレビュー・`onVideoElement`/`onStreamChange` で親へ受け渡し）。**コールバック props は親が `useCallback` の安定参照で渡す**（インライン関数だと、ストリーミング中のチャンク毎再レンダーで `<video>` の callback ref が付け外しされ続ける）。
 - **自動実況ループ（04・15）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・変化検知ゲート・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend: (p: SendPayload) => Promise<void>` で注入。`SendPayload` は `{ imageBase64, recentLines, userMessage?, isIdle? }`）。tick は2分岐で、変化があれば通常送信、無ければ `lastSentAtRef` を見て自発発話（15）。**自発発話は `canIdle()` が真のときだけ**（SessionClient が `!tts.speaking && tts.queueLength === 0` を渡す。読み上げ中に撃つと `onSend` 冒頭の `reset()` で前の発言が途中で切れる）。
 - **知識（05）**: 上記 `knowledge/fe-fc/` と `src/lib/knowledge.ts`。
 - **プロンプト（06・14）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。**発話長の指示はこの1行だけに置く**（プライマー・`persona.tone`・Route に重複させない。後から注入された方が勝って打ち消し合う）。**「実況するか雑談するか」のモード選択はここに書かない**（`route.ts` の2定数が持つ）。
