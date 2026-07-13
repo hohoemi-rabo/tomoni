@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 未確認・宿題
 
-- **章キャスト表がまだ1枚も無い**（`knowledge/fe-fc/chapters/` はディレクトリごと存在しない。git は空ディレクトリを追跡せず、保存時に自動作成されるので正常）。`/knowledge` から取得・目視確認・保存すれば埋まる。それまで AI は画面に名前が出ても照合先が無く、固有名を断定しない。
+- 章キャスト表は第1〜25章まで `/knowledge` から生成・目視確認・保存済み（`knowledge/fe-fc/chapters/chapter-01.md` 〜 `chapter-25.md`）。AI は画面に名前が出ていれば、その章の1ファイルと照合して固有名を特定できる。
 - 実機での通し確認（OBS仮想カメラ→自動実況→読み上げ→録画モード→STT、静止中の自発発話）は開発者の手動確認に委ねる。
 
 ## 開発チケットと Todo 運用
@@ -70,7 +70,7 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 
 AIの**感情・反応を正しくする前提**と**今この章に誰がいるか**の最小限。2階建て:
 - `knowledge/fe-fc/fe-primer.md` — 全章共通プライマー1枚。システムプロンプト先頭に固定。
-- `knowledge/fe-fc/chapters/chapter-XX.md` — 章ごとのキャスト表（ゼロ埋め番号）。`state.chapter` に対応する**1ファイルだけ**注入する（全章一括注入はトークン肥大）。番号で引くだけの最小リトリーバル。ローダーは `src/lib/knowledge.ts`（`loadPrimer` / `loadChapterCast` / `chapterFileName`）。作り方は `knowledge/fe-fc/README.md`（`/knowledge` から生成、またはスクショ→名簿化）。**現在このディレクトリは存在しない**（`/knowledge` の保存時に自動作成される）。
+- `knowledge/fe-fc/chapters/chapter-XX.md` — 章ごとのキャスト表（ゼロ埋め番号）。`state.chapter` に対応する**1ファイルだけ**注入する（全章一括注入はトークン肥大）。番号で引くだけの最小リトリーバル。ローダーは `src/lib/knowledge.ts`（`loadPrimer` / `loadChapterCast` / `chapterFileName`）。作り方は `knowledge/fe-fc/README.md`（`/knowledge` から生成、またはスクショ→名簿化）。**第1〜25章は生成・保存済み**。
   - 自軍は第1章からの**累積**（その時点で画面にいる全員が要るため）。敵はその章だけ。
   - **中身が空のテンプレを置かない。** `buildSystemPrompt` は非空なら注入するので、プレースホルダがそのままキャスト表としてAIに渡る（実際にそうなっていたので削除した）。ファイルが無ければ丸ごとスキップされる＝無いほうが正しい。
 
