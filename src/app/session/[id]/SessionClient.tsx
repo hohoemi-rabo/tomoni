@@ -158,14 +158,15 @@ export default function SessionClient({
     [playthroughId],
   );
 
-  // 読み上げが終わるまで自発発話を待たせる。撃つと onSend 冒頭の reset() で
-  // 前の発言が途中で切れる（アイドル発話は読み上げ 20〜30 秒に対し間隔 20 秒）。
-  const canIdle = useCallback(
+  // 読み上げが鳴り終わるまで、自動ループの発話（実況・自発発話とも）を待たせる。
+  // 撃つと onSend 冒頭の reset() で前の発言が途中で切れる。SLGは1手ごとに画面が
+  // 動くので、実況側にこのガードが無いと台詞がほぼ毎回途中で切り落とされる。
+  const canSpeak = useCallback(
     () => !ttsRef.current.speaking && ttsRef.current.queueLength === 0,
     [],
   );
 
-  const auto = useAutoNarration({ videoRef, onSend, canIdle });
+  const auto = useAutoNarration({ videoRef, onSend, canSpeak });
   addRecentRef.current = auto.addRecentLine;
 
   // STT（音声で話しかける・ticket 13・任意）。認識テキストを手動トリガーに添えて送る。

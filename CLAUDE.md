@@ -43,7 +43,8 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 テストフレームワークはまだ導入されていない。純粋なサーバ側ロジック（`prompt.ts` / `sentence.ts` / `knowledge-extract.ts` 等・型のみ import のもの）は `node --experimental-strip-types <file>.mts` で実モジュールを直接実行して検証してきた。API Route（`/api/narrate` / `/api/tts` / `/api/end-session` / `/api/knowledge/*`）は `npm run dev` 起動後に `curl` で疎通・異常系を確認。DB 周りは Supabase MCP（`execute_sql` 等）で実機確認。ブラウザ依存は開発者が手動確認（映像取り込み・自動ループ・自発発話は `/capture-test`、読み上げは `/tts-test`、セッション統合・録画モード・STT は `/session/[id]`、キャスト表生成は `/knowledge`。STT は Web Speech のため Chrome 系のみ）。
 
 - `@google/genai` 等の依存を使う検証スクリプトは、**プロジェクト直下に置いて実行する**（scratchpad からだと `node_modules` を解決できない）。実行後に消すこと。
-- 自発発話（15）を待たずに確認したいときは `IDLE_CHATTER_MS` を一時的に `4000` へ下げ、`/capture-test` に静止画を映す。ログに `[自発]` / `[変化]` が出る。
+- 発話の間隔を待たずに確認したいときは `SPEAK_INTERVAL_MIN_MS` / `SPEAK_INTERVAL_MAX_MS` を一時的に `4000` へ下げ、`/capture-test` に静止画を映す。ログに `[自発]` / `[変化]` が出る。
+- ブラウザ依存（映像取り込み・自動ループ・読み上げ）を**無人で駆動する手順は `.claude/skills/verify/SKILL.md`** にある（Playwright の偽カメラ・観測窓・A/Bの取り方）。タイミング系を触ったら実際に走らせて確かめる。
 - DB を書き換える検証は、ダミー行を作って試し、**必ず消す**。`WHERE` 無しの `UPDATE`/`DELETE` は実行しない。
 
 > **注意**: `npm run dev` 起動中に `npm run build` を実行すると `.next` が壊れて実行中の dev サーバが 500 を返す。build する時は dev を止めてから。検証用の一時 JPEG が要るとき（narrate の curl 等）は Pillow/ImageMagick が無い環境では `curl https://picsum.photos/256.jpg` で取得できる（1x1 の極小 JPEG は Gemini が "Unable to process image" で弾く）。
@@ -61,7 +62,7 @@ npm run lint    # ESLint（next/core-web-vitals + next/typescript）
 「フレーム取得 → 送信 → 生成 → 読み上げ」のループが本体。
 
 1. **画面取り込み（新規・本体）**: OBSバーチャルカメラを `getUserMedia` で偽カメラとして受け取り `<video>` にプレビュー。映像ソース取り込みは**差し替え可能な1モジュール**として抽象化する（将来 `getDisplayMedia` も足せるように）。
-2. **自動実況ループ**: `<video>` の現フレームを canvas → JPEG(base64) 化、**長辺512px程度にダウンスケール**、前回送信フレームとのピクセル差分で**変化があったときだけ** Gemini に送る（SLGはターン制で静止しがち＝同じ発言の繰り返しとコストを同時に防ぐ）。変化が無いまま `IDLE_CHATTER_MS` 沈黙したら、検知を迂回して**自分から喋る**（15）。間隔・しきい値は調整可能な定数に。直近のAI発言を数件メモリ保持し「繰り返さない」よう渡す。
+2. **自動実況ループ**: `<video>` の現フレームを canvas → JPEG(base64) 化、**長辺512px程度にダウンスケール**して Gemini に送る。**送るかどうかは時間だけで決まる**（19）。前回の発話開始から `SPEAK_INTERVAL_MIN_MS`〜`SPEAK_INTERVAL_MAX_MS` の**乱数間隔**が経ったら喋る。ピクセル差分は**「実況させるか雑談させるか」の出し分け専用**（変化あり＝実況／無し＝雑談）で、テンポには効かない。間隔・しきい値は調整可能な定数に。直近のAI発言を数件メモリ保持し「繰り返さない」よう渡す。
 3. **実況API `POST /api/narrate`（ストリーミング）**: 入力 `{ playthroughId, imageBase64, recentLines, userMessage?, isIdle? }`。サーバで state(任意)＋persona＋FEプライマー＋直近発言からシステムプロンプトを組み、画像1枚＋指示を Gemini(Vision) へ。`generateContentStream` の `chunk.text` を `ReadableStream` で返す。
 4. **TTS `/api/tts`**: Cloud TTS REST → base64 mp3。クライアントは文末確定ごとに逐次再生キュー（`useTts`）へ流す。
 5. **録画モードUI**: 会話以外を隠し全幅化・文字サイズ切替（OBS録画前提）。
@@ -83,7 +84,7 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 - **基盤（01）**: `src/lib/env.ts`（サーバ専用キーの遅延検証アクセサ）・`src/lib/config.ts`（調整可能な定数を一元管理）・`src/lib/retry.ts`（`withRetry`・指数バックオフ）・`src/lib/types.ts`（`State`/`Persona`/`Playthrough`/`Message`/`NarrateRequest`）。
 - **データ層（02）**: `src/lib/supabase.ts`（`server-only` クライアント）・`src/lib/playthroughs.ts`（CRUD＋`state` 部分更新）・`src/lib/persona.ts`（`DEFAULT_PERSONA`）。
 - **映像取り込み（03）**: `src/lib/video/types.ts`（`VideoSource` 抽象）・`src/lib/video/userMediaSource.ts`（`getUserMedia` 実装）・`src/components/VideoPreview.tsx`（`'use client'` プレビュー・`onVideoElement`/`onStreamChange` で親へ受け渡し）。**コールバック props は親が `useCallback` の安定参照で渡す**（インライン関数だと、ストリーミング中のチャンク毎再レンダーで `<video>` の callback ref が付け外しされ続ける）。
-- **自動実況ループ（04・15）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・変化検知ゲート・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend: (p: SendPayload) => Promise<void>` で注入。`SendPayload` は `{ imageBase64, recentLines, userMessage?, isIdle? }`）。tick は2分岐で、変化があれば通常送信、無ければ `lastSentAtRef` を見て自発発話（15）。**自発発話は `canIdle()` が真のときだけ**（SessionClient が `!tts.speaking && tts.queueLength === 0` を渡す。読み上げ中に撃つと `onSend` 冒頭の `reset()` で前の発言が途中で切れる）。
+- **自動実況ループ（04・15・18・19）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend: (p: SendPayload) => Promise<void>` で注入。`SendPayload` は `{ imageBase64, recentLines, userMessage?, isIdle? }`）。tick の関門は3つで、順に **①生成中(`busyRef`) → ②`canSpeak()`（読み上げ中でない・18） → ③時間（前回発話から `gapRef` の乱数間隔が経過・19）**。3つを抜けたら必ず送る。**そのとき `isIdle = diff <= threshold` で実況／雑談を出し分ける**（差分はここにしか効かない。テンポの門番にすると取り込みノイズとカーソル点滅で喋り出す＝実測）。乱数間隔は `send()` 内の `rollGap()` で毎回引き直す（唯一の送信集約点なので手動・STT の直後もループが被せてこない）。`canSpeak` は SessionClient が `!tts.speaking && tts.queueLength === 0` を渡す（読み上げ中に撃つと `onSend` 冒頭の `reset()` で前の発言が途中で切れる）。**`triggerNow`（手動・STT）には②③を掛けない**（自分で押したのに黙るのは故障に見える）。
 - **知識（05）**: 上記 `knowledge/fe-fc/` と `src/lib/knowledge.ts`。
 - **プロンプト（06・14）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。**発話長の指示はこの1行だけに置く**（プライマー・`persona.tone`・Route に重複させない。後から注入された方が勝って打ち消し合う）。**「実況するか雑談するか」のモード選択はここに書かない**（`route.ts` の2定数が持つ）。
 - **実況API（07）**: `src/lib/gemini.ts`（`server-only` の遅延クライアント `getGeminiClient`＋全カテゴリ `BLOCK_NONE` の `SAFETY_SETTINGS_BLOCK_NONE`。07/12 で共有）・`src/app/api/narrate/route.ts`（入力検証→state/persona取得→知識読込→06でプロンプト→`gemini-2.5-flash` の `generateContentStream` を `ReadableStream` で返す。確立のみ `withRetry`、開始前エラーは `{ error }` JSON）。**そのターンで実況させるか雑談させるかは、画像に隣接する `NARRATE_TURN_TEXT` / `IDLE_TURN_TEXT` の2定数だけが決める**（`isIdle` で出し分け。`userMessage` があれば `isIdle` を無視して応答を優先）。`@google/genai` 導入済み。
