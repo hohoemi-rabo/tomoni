@@ -10,13 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **実装の進捗は `docs/00-index.md` のチケット No. と各チケットの `## Todo` で管理する**。完了チケットの再実装や、未完チケットの先読み実装をしないこと。現状は下記「現在の実装状況」を参照。
 
-**Phase 1（MVP・01〜13）と Phase 2（14〜19）は実装完了。** 以降は新たな要件を新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。18・19 は実プレイでの詰め（発話間隔の値）が Todo に残っている。
+**Phase 1（MVP・01〜13）と Phase 2（14〜19）は実装完了。Phase 3（20・21＝ゲームの汎用化）は起票済み・未着手。** 新たな要件は新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。18・19 は実プレイでの詰め（発話間隔の値）が Todo に残っている。
 
-### 企画の核（14 で方針転換した。古い前提で判断しないこと）
+### 企画の核（14・16・20 で方針転換した。古い前提で判断しないこと）
 
 - **ネタバレはしてよい**（14 で禁止を撤廃）。「一緒に初見で驚く」より「誰かと一緒にやっている実感」を優先する。
-- **攻略アドバイスはしない**（維持）。線引きは **「事実は語る、手順は言わない」**。「あの剣士はナバール。実は仲間になる」＝OK ／「シーダで話しかけて」＝NG。
+- **攻略アドバイスはしない**（維持。これだけは一貫して強い制約）。線引きは **「事実は語る、手順は言わない」**。「あの剣士はナバール。実は仲間になる」＝OK ／「シーダで話しかけて」＝NG。
 - **参照サイトからの取得はしてよい**（16 で禁止を撤廃）。ただし `/knowledge` での**名簿化のための一度きりの取得**に限る。散文（攻略手順）は捨て、目視確認してから保存する。実況ループからは取得しない。攻略ナレッジの大量注入と RAG は引き続き禁止。
+- **ゲームは差し替え可能にする**（20 で「FC版FE専用」を撤廃・チケット起票済み）。`knowledge/<slug>/` に `game.json` と `primer.md` を置けばゲームが増える。**FC版FE は引き続き第一の題材**で、汎用化で FE の作り込み（ロストを悼む・命中に一喜一憂）を薄めない——それらはゲーム固有の層（プライマー）に置く。汎用化を口実に攻略ナレッジを積まないこと。
 
 ### 未確認・宿題
 
@@ -86,7 +87,7 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 - **映像取り込み（03）**: `src/lib/video/types.ts`（`VideoSource` 抽象）・`src/lib/video/userMediaSource.ts`（`getUserMedia` 実装）・`src/components/VideoPreview.tsx`（`'use client'` プレビュー・`onVideoElement`/`onStreamChange` で親へ受け渡し）。**コールバック props は親が `useCallback` の安定参照で渡す**（インライン関数だと、ストリーミング中のチャンク毎再レンダーで `<video>` の callback ref が付け外しされ続ける）。
 - **自動実況ループ（04・15・18・19）**: `src/lib/video/frame.ts`（`captureFrame`／`signatureDiff`）・`src/hooks/useAutoNarration.ts`（間隔ループ・多重送信抑止・手動トリガー・`recentLines` 保持。送信は `onSend: (p: SendPayload) => Promise<void>` で注入。`SendPayload` は `{ imageBase64, recentLines, userMessage?, isIdle? }`）。tick の関門は3つで、順に **①生成中(`busyRef`) → ②`canSpeak()`（読み上げ中でない・18） → ③時間（前回発話から `gapRef` の乱数間隔が経過・19）**。3つを抜けたら必ず送る。**そのとき `isIdle = diff <= threshold` で実況／雑談を出し分ける**（差分はここにしか効かない。テンポの門番にすると取り込みノイズとカーソル点滅で喋り出す＝実測）。乱数間隔は `send()` 内の `rollGap()` で毎回引き直す（唯一の送信集約点なので手動・STT の直後もループが被せてこない）。`canSpeak` は SessionClient が `!tts.speaking && tts.queueLength === 0` を渡す（読み上げ中に撃つと `onSend` 冒頭の `reset()` で前の発言が途中で切れる）。**`triggerNow`（手動・STT）には②③を掛けない**（自分で押したのに黙るのは故障に見える）。
 - **知識（05）**: 上記 `knowledge/fe-fc/` と `src/lib/knowledge.ts`。
-- **プロンプト（06・14）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。**発話長の指示はこの1行だけに置く**（プライマー・`persona.tone`・Route に重複させない。後から注入された方が勝って打ち消し合う）。**「実況するか雑談するか」のモード選択はここに書かない**（`route.ts` の2定数が持つ）。
+- **プロンプト（06・14）**: `src/lib/prompt.ts`（`buildSystemPrompt`・純関数。プライマー先頭固定＋厳守事項＋動的文脈）。**システムプロンプトは2層**——`prompt.ts` は**「戦友としてどう振る舞うか」だけ**（ゲームが変わっても変わらない層）、`knowledge/<game>/primer.md` は**「そのゲームは何か」だけ**（版の同定・何に感情が動くか・何が「手順」にあたるか・画面認識上の固有事情）。**ゲーム固有の指示を `prompt.ts` に書かない／振る舞いの指示をプライマーに書かない。** 重複させると後から注入された方が先を打ち消す。**発話長の指示は `prompt.ts` の1行だけに置く**（`persona.tone`・Route に重複させない）。**「実況するか雑談するか」のモード選択はここに書かない**（`route.ts` の2定数が持つ）。
 - **実況API（07）**: `src/lib/gemini.ts`（`server-only` の遅延クライアント `getGeminiClient`＋全カテゴリ `BLOCK_NONE` の `SAFETY_SETTINGS_BLOCK_NONE`。07/12 で共有）・`src/app/api/narrate/route.ts`（入力検証→state/persona取得→知識読込→06でプロンプト→`gemini-2.5-flash` の `generateContentStream` を `ReadableStream` で返す。確立のみ `withRetry`、開始前エラーは `{ error }` JSON）。**そのターンで実況させるか雑談させるかは、画像に隣接する `NARRATE_TURN_TEXT` / `IDLE_TURN_TEXT` の2定数だけが決める**（`isIdle` で出し分け。`userMessage` があれば `isIdle` を無視して応答を優先）。`@google/genai` 導入済み。
 - **TTS（08）**: `src/lib/sentence.ts`（`takeSentences`・純関数の文末分割）・`src/app/api/tts/route.ts`（Cloud TTS REST 直叩き→`{ audioBase64 }`・`withRetry`・`{ error }` JSON）・`src/hooks/useTts.ts`（`'use client'`・`feed`/`flush`/`reset`＋1文先読みパイプライン再生キュー・ON/OFF・ボイス選択）。ボイス候補は `config.ts` の `TTS_VOICES`。
 - **トップ（09・17）**: `src/app/page.tsx`（`force-dynamic` の Server Component・`listPlaythroughs` で一覧・各項目から `/session/[id]` へ・末尾に `/knowledge` への導線）・`src/app/NewPlaythroughForm.tsx`（`'use client'`・`useActionState`）・`src/app/DeletePlaythroughButton.tsx`（`'use client'`・`window.confirm` で確認）・`src/app/actions.ts`（`'use server'` の `createPlaythroughAction` / `deletePlaythroughAction`・入力検証＋`revalidatePath('/')`）。削除時 `messages` は DB の `on delete cascade` で消える（アプリ側で消さない）。
@@ -159,7 +160,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 - ❌ **攻略アドバイス／最適手の指示**をしない（聞かれても一緒に悩む側）。**加入条件を満たす操作手順**（誰で話しかける等）も含む。
 - ✅ **ネタバレはしてよい**（チケット14で解禁）。先の展開・人物の運命を自分から語ってよい。線引きは **「事実は語る、手順は言わない」**。「あの剣士はナバール。実は仲間になる」＝OK／「シーダで話しかけて」＝NG。
 - ❌ 攻略ナレッジの大量注入・RAG/埋め込み検索をしない。（参照サイトからの取得はチケット16で解禁。ただし `/knowledge` での**名簿化のための一度きりの取得**に限り、散文＝攻略手順は捨て、目視確認してから保存する。実況ループからは取得しない。）
-- ❌ 複数ゲーム対応・ゲーム差し替えUI（FC版FE専用）。
+- ✅ **ゲームの差し替えはしてよい**（チケット20で「FC版FE専用」を撤廃）。ただし**ゲームを足すためにコードを書かない**（`knowledge/<slug>/` にファイルを置くだけ）。ゲーム固有の分岐を `src/` に散らかさない。
 - ❌ 認証・マルチユーザー・デプロイ・公開。
 - ❌ 秒単位の高速実況（技術的に不可。数秒のラグ前提で「場面が変わったら語る」程度）。
 - ❌ **先読み実装をしない**。`REQUIREMENTS.md` に書いていない機能は作らない。MVPが動いてから別途要件を切る。
