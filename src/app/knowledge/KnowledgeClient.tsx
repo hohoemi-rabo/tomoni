@@ -11,10 +11,18 @@ interface Draft {
   exists: boolean;
 }
 
+/** ゲーム選択肢。`supported` は `game.json` に `knowledgeBuilder` があるか（ticket 21）。 */
+export interface GameOption {
+  slug: string;
+  title: string;
+  supported: boolean;
+}
+
 const EMPTY_URLS = Array.from({ length: KNOWLEDGE_MAX_URLS }, () => "");
 
 /** 取得 → 下書き確認 → 選んだ章だけ保存。書き込みは保存ボタンでしか起きない。 */
-export default function KnowledgeClient() {
+export default function KnowledgeClient({ games }: { games: GameOption[] }) {
+  const [game, setGame] = useState(games[0]?.slug ?? "");
   const [urls, setUrls] = useState<string[]>(EMPTY_URLS);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [failed, setFailed] = useState<number[]>([]);
@@ -38,7 +46,10 @@ export default function KnowledgeClient() {
       const res = await fetch("/api/knowledge/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls: urls.map((u) => u.trim()).filter(Boolean) }),
+        body: JSON.stringify({
+          game,
+          urls: urls.map((u) => u.trim()).filter(Boolean),
+        }),
       });
       const data = (await res.json()) as {
         drafts?: Draft[];
@@ -55,7 +66,7 @@ export default function KnowledgeClient() {
     } finally {
       setExtracting(false);
     }
-  }, [urls]);
+  }, [game, urls]);
 
   const save = useCallback(async () => {
     setSaving(true);
@@ -70,17 +81,19 @@ export default function KnowledgeClient() {
       const res = await fetch("/api/knowledge/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapters }),
+        body: JSON.stringify({ game, chapters }),
       });
       const data = (await res.json()) as { saved?: string[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? `保存に失敗(HTTP ${res.status})`);
-      setSavedMessage(`${data.saved?.length ?? 0} 章を保存しました。`);
+      setSavedMessage(
+        `${data.saved?.length ?? 0} 章を knowledge/${game}/chapters/ に保存しました。`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
-  }, [drafts, selected]);
+  }, [game, drafts, selected]);
 
   const toggle = useCallback((chapter: number) => {
     setSelected((prev) => {
@@ -95,8 +108,50 @@ export default function KnowledgeClient() {
     (d) => d.exists && selected.has(d.chapter),
   ).length;
 
+  const selectedGame = games.find((g) => g.slug === game);
+  const supported = selectedGame?.supported ?? false;
+
+  if (games.length === 0) {
+    return (
+      <p className="text-sm text-red-600 dark:text-red-400">
+        ゲーム定義がありません。`knowledge/&lt;slug&gt;/game.json` を置いてください。
+      </p>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="text-black/60 dark:text-white/60">ゲーム</span>
+        <select
+          value={game}
+          onChange={(e) => {
+            setGame(e.target.value);
+            setDrafts([]); // 別ゲームの下書きを持ち越さない（誤保存を防ぐ）。
+            setFailed([]);
+            setError(null);
+            setSavedMessage(null);
+          }}
+          className="rounded border border-black/15 bg-background px-3 py-2 text-foreground dark:border-white/15"
+        >
+          {games.map((g) => (
+            <option key={g.slug} value={g.slug}>
+              {g.title}
+              {g.supported ? "" : "（URLからの生成に未対応）"}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {!supported && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          このゲームは URL からの章キャスト表生成に対応していません（`game.json` に{" "}
+          <code>knowledgeBuilder</code> がありません）。知識ファイルは手書きするか、
+          スクリーンショットから起こしてください（§8.4 その2）。章・ステージ構造を持たない
+          ゲームは、プライマー1枚だけでも実況は成立します。
+        </p>
+      )}
+
       <div className="flex flex-col gap-2">
         {urls.map((url, i) => (
           <label key={i} className="flex flex-col gap-1 text-sm">
@@ -119,7 +174,7 @@ export default function KnowledgeClient() {
         <button
           type="button"
           onClick={extract}
-          disabled={extracting || urls.every((u) => !u.trim())}
+          disabled={extracting || !supported || urls.every((u) => !u.trim())}
           className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
         >
           {extracting ? "取得して抽出中…" : "取得して下書きを作る"}

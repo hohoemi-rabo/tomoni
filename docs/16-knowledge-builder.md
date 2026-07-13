@@ -66,3 +66,11 @@
 - 取得は一度だけ。サイトへ連続アクセスしない。取得した本文は**転載せず**、ローカルの知識ファイル生成にのみ使う。
 - 25章分をディスクに置いてよい。`loadChapterCast` は `state.chapter` に対応する1枚しか読まないため、未到達章がプロンプトへ入ることはない。
 - 固有名ルール（画面に文字が無ければ断定しない）は維持されるので、このキャスト表は**照合用**として働く。
+
+## 21 で `game.json` 駆動に一般化した（2026-07-14）
+
+抽出のゲーム固有部分（章見出しの正規表現・グループ＝自軍/敵・累積の有無・列・同定文）は、`knowledge/<game>/game.json` の `knowledgeBuilder` へ移した。
+
+- `/api/knowledge/extract` と `/save` は `game` を受け取り、スキーマとプロンプトを定義から組む。**FE の設定は現行の挙動をそのまま書き下ろしてある**（同じURLで再生成し、既存 `chapter-01.md` と本文が一字一句同じであることを確認済み。差分は末尾の注記1行のみ）。
+- `knowledgeBuilder` を持たないゲームでは `/knowledge` の章抽出を**使えない**（UIで無効化し、422 を返す）。章・ステージ構造を持たないゲームは primer 1枚で成立するので、これは劣化ではない。
+- 純関数は `accumulateAllies` → `accumulateGroups`、`ChapterCast` は `{ allies, enemies }` → `{ groups: Record<string, CastUnit[]> }` に変わった。**上記の教訓（`required`/`propertyOrdering`・セル区切り・`Promise.all` で束ねない・リトライ5回/2秒起点・文字コード判定）はすべてそのまま生きている。**

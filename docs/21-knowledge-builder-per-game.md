@@ -41,16 +41,16 @@
 
 ## Todo
 
-- [ ] `game.json` に `knowledgeBuilder`（任意）を追加。型を `src/lib/types.ts` の `GameDef` に足す
-- [ ] `knowledge/fe-fc/game.json` に FE の現行設定をそのまま書き下ろす（挙動が変わらないことが確認の基準）
-- [ ] `src/lib/knowledge-extract.ts`：`splitChapters(text, headingPattern)` に一般化。`ChapterCast` を `{ chapter, title, groups: Record<string, CastUnit[]> }` に。`accumulateAllies` → `accumulateGroups`（`accumulate: true` のグループだけ累積）。`renderChapterMarkdown` は `groups[].heading` で見出しを出す
-- [ ] `src/app/api/knowledge/extract/route.ts`：`game` を受け取り、`knowledgeBuilder` から `responseSchema` と抽出指示を組む。**`required` / `propertyOrdering` を明示**
-- [ ] `src/app/api/knowledge/save/route.ts`：保存先を `knowledge/<game>/chapters/` に。**slug は検証してから `path.join`**（リポジトリで唯一の `writeFile` なので特に慎重に）
-- [ ] `src/app/knowledge/KnowledgeClient.tsx`：ゲーム選択を足す。`knowledgeBuilder` が無いゲームは選べない（「このゲームは URL からの生成に対応していません。知識ファイルは手書きしてください」と出す）
-- [ ] 検証：`node --experimental-strip-types` で純関数（`splitChapters` / `accumulateGroups` / `renderChapterMarkdown`）を直接実行し、**FE 設定で既存の `chapter-01.md`〜`chapter-25.md` と同じ体裁が出る**こと
-- [ ] 検証：`/knowledge` で FE の章を1つ再生成し、保存済みファイルと差分が出ない（または説明できる差分だけ）こと。**ダミー行を作ったら必ず消す**
-- [ ] `docs/16-knowledge-builder.md` に「21 で `game.json` 駆動に一般化した」と追記
-- [ ] `knowledge/fe-fc/README.md` を更新
+- [×] `game.json` に `knowledgeBuilder`（任意）を追加。型を `src/lib/types.ts` の `GameDef` に足す
+- [×] `knowledge/fe-fc/game.json` に FE の現行設定をそのまま書き下ろす（挙動が変わらないことが確認の基準）
+- [×] `src/lib/knowledge-extract.ts`：`splitChapters(text, headingPattern)` に一般化。`ChapterCast` を `{ chapter, title, groups: Record<string, CastUnit[]> }` に。`accumulateAllies` → `accumulateGroups`（`accumulate: true` のグループだけ累積）。`renderChapterMarkdown` は `groups[].heading` で見出しを出す
+- [×] `src/app/api/knowledge/extract/route.ts`：`game` を受け取り、`knowledgeBuilder` から `responseSchema` と抽出指示を組む。**`required` / `propertyOrdering` を明示**
+- [×] `src/app/api/knowledge/save/route.ts`：保存先を `knowledge/<game>/chapters/` に。**slug は検証してから `path.join`**（リポジトリで唯一の `writeFile` なので特に慎重に）
+- [×] `src/app/knowledge/KnowledgeClient.tsx`：ゲーム選択を足す。`knowledgeBuilder` が無いゲームは選べない（「このゲームは URL からの生成に対応していません。知識ファイルは手書きしてください」と出す）
+- [×] 検証：`node --experimental-strip-types` で純関数（`splitChapters` / `accumulateGroups` / `renderChapterMarkdown`）を直接実行し、**FE 設定で既存の `chapter-01.md`〜`chapter-25.md` と同じ体裁が出る**こと
+- [×] 検証：`/knowledge` で FE の章を1つ再生成し、保存済みファイルと差分が出ない（または説明できる差分だけ）こと。**ダミー行を作ったら必ず消す**
+- [×] `docs/16-knowledge-builder.md` に「21 で `game.json` 駆動に一般化した」と追記
+- [×] `knowledge/fe-fc/README.md` を更新
 
 ## 完了条件
 

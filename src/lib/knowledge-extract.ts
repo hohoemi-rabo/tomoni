@@ -1,10 +1,15 @@
+import type { KnowledgeGroupDef } from "@/lib/types";
+
 /**
- * 参照URLから章キャスト表を作るための純関数群（ticket 16）。
+ * 参照URLから章キャスト表を作るための純関数群（ticket 16 / 21）。
  *
  * fetch も Gemini も含めない。文字コード判定・タグ除去・章分割・体裁整形だけを持ち、
- * `node --experimental-strip-types` で直接実行して検証できるようにする。
- * 攻略手順（散文）はここでは判別しない。何が表かの判断はLLMに委ね、
- * このモジュールは「LLMが返した構造化データ」を §8.2 の体裁に落とす側を担う。
+ * `node --experimental-strip-types` で直接実行して検証できるようにする（**型のみ import**
+ * という条件を崩さないこと）。攻略手順（散文）はここでは判別しない。何が表かの判断はLLMに
+ * 委ね、このモジュールは「LLMが返した構造化データ」を §8.2 の体裁に落とす側を担う。
+ *
+ * **ゲーム固有の形（章見出し・グループ・累積の有無）は `game.json` の `knowledgeBuilder`
+ * から渡される**（ticket 21）。ここに FE を直書きしない。
  */
 
 /** キャスト表1行ぶん。表に書かれていた事実だけを持つ。 */
@@ -16,15 +21,15 @@ export interface CastUnit {
   items?: string[];
   /** 同一ユニットが複数体いるとき（敵の雑兵など）。 */
   count?: number;
-  /** そのマップのボスか（敵のみ）。 */
+  /** そのマップのボスか。 */
   isBoss?: boolean;
 }
 
 export interface ChapterCast {
   chapter: number;
   title?: string;
-  allies: CastUnit[];
-  enemies: CastUnit[];
+  /** グループキー（`allies` / `enemies` 等）→ そのグループのユニット。 */
+  groups: Record<string, CastUnit[]>;
 }
 
 /** 章ごとの本文チャンク。 */
@@ -98,10 +103,6 @@ export function htmlToText(html: string): string {
     .join("\n");
 }
 
-/** 行頭の `Map.1` / `第1章` / `Chapter 1` を章見出しとみなす。 */
-const CHAPTER_HEADING =
-  /^(?:Map[.．]?\s*(\d{1,2})\b|第\s*(\d{1,2})\s*章|Chapter\s+(\d{1,2})\b)/i;
-
 /** 全角数字→半角。`chapterToNumber`（knowledge.ts）と同じ前処理。 */
 function toHalfWidthDigits(s: string): string {
   return s.replace(/[０-９]/g, (c) =>
@@ -110,19 +111,38 @@ function toHalfWidthDigits(s: string): string {
 }
 
 /**
+ * 章見出しの正規表現を組む（`game.json` の `sectionHeading`）。
+ * キャプチャ群のどれかに章番号が入る前提（どの分岐に当たったかは呼び出し側では区別しない）。
+ */
+export function chapterHeadingRegExp(pattern: string): RegExp {
+  return new RegExp(pattern, "i");
+}
+
+/** マッチ結果から最初に見つかった数字のキャプチャを章番号にする。 */
+function capturedNumber(m: RegExpMatchArray): number | null {
+  for (const g of m.slice(1)) {
+    if (typeof g === "string" && g !== "") {
+      const n = Number.parseInt(g, 10);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}
+
+/**
  * 本文を章ごとのチャンクに割る。見出しが1つも無ければ空配列。
  * 同じ章見出しが複数回出てもチャンクは1つにまとめる（目次と本文の重複対策）。
  */
-export function splitChapters(text: string): ChapterChunk[] {
+export function splitChapters(text: string, heading: RegExp): ChapterChunk[] {
   const lines = toHalfWidthDigits(text).split("\n");
   const byChapter = new Map<number, string[]>();
   let current: number | null = null;
 
   for (const line of lines) {
-    const m = line.match(CHAPTER_HEADING);
+    const m = line.match(heading);
     if (m) {
-      const n = Number.parseInt(m[1] ?? m[2] ?? m[3], 10);
-      if (Number.isFinite(n) && n >= 1 && n <= 99) {
+      const n = capturedNumber(m);
+      if (n !== null && n >= 1 && n <= 99) {
         current = n;
         if (!byChapter.has(n)) byChapter.set(n, []);
       }
@@ -153,18 +173,35 @@ export function mergeChapterSources(
 }
 
 /**
- * 自軍を第1章から累積する。取得元の表は「その章で新規加入する人」しか載せないが、
- * キャスト表の目的は画面の名前との照合なので、その時点でいる全員が要る。
- * 敵はその章のものだけ（累積しない）。
+ * `accumulate: true` のグループを第1章から累積する。
+ *
+ * FEの自軍が典型で、取得元の表は「その章で新規加入する人」しか載せないが、キャスト表の目的は
+ * 画面の名前との照合なので、その時点でいる全員が要る。敵のように毎章入れ替わるグループは
+ * 累積しない。**どのグループを累積するかはゲーム定義が決める**（ticket 21）。
  */
-export function accumulateAllies(casts: ChapterCast[]): ChapterCast[] {
+export function accumulateGroups(
+  casts: ChapterCast[],
+  groups: KnowledgeGroupDef[],
+): ChapterCast[] {
   const sorted = [...casts].sort((a, b) => a.chapter - b.chapter);
-  const seen = new Map<string, CastUnit>();
+  const seenByGroup = new Map<string, Map<string, CastUnit>>();
+
   return sorted.map((cast) => {
-    for (const unit of cast.allies) {
-      if (!seen.has(unit.name)) seen.set(unit.name, unit);
+    const next: Record<string, CastUnit[]> = {};
+    for (const g of groups) {
+      const units = cast.groups[g.key] ?? [];
+      if (!g.accumulate) {
+        next[g.key] = units;
+        continue;
+      }
+      const seen = seenByGroup.get(g.key) ?? new Map<string, CastUnit>();
+      for (const unit of units) {
+        if (!seen.has(unit.name)) seen.set(unit.name, unit);
+      }
+      seenByGroup.set(g.key, seen);
+      next[g.key] = [...seen.values()];
     }
-    return { ...cast, allies: [...seen.values()] };
+    return { ...cast, groups: next };
   });
 }
 
@@ -188,26 +225,41 @@ function unitLine(u: CastUnit): string {
 
 const EMPTY = "- （表から読み取れませんでした）";
 
-/** §8.2 の体裁に整形する。整形をLLMに任せると体裁がブレるので、ここで固定する。 */
-export function renderChapterMarkdown(cast: ChapterCast): string {
-  const title = cast.title?.trim();
-  const heading = title ? `# 第${cast.chapter}章 ${title}` : `# 第${cast.chapter}章`;
+/** `第{n}章` のような章ラベルを組む。 */
+export function sectionTitle(label: string, chapter: number): string {
+  return label.replace("{n}", String(chapter));
+}
 
-  // ボスを先に出す（画面で最初に照合したくなるのはボス）。
-  const enemies = [...cast.enemies].sort(
-    (a, b) => Number(b.isBoss ?? false) - Number(a.isBoss ?? false),
-  );
+/**
+ * §8.2 の体裁に整形する。整形をLLMに任せると体裁がブレるので、ここで固定する。
+ * 見出し・グループの並びは `game.json`（`sectionLabel` / `groups`）が決める（ticket 21）。
+ */
+export function renderChapterMarkdown(
+  cast: ChapterCast,
+  groups: KnowledgeGroupDef[],
+  sectionLabel: string,
+): string {
+  const title = cast.title?.trim();
+  const label = sectionTitle(sectionLabel, cast.chapter);
+  const heading = title ? `# ${label} ${title}` : `# ${label}`;
+
+  const sections = groups.flatMap((g) => {
+    // ボスを先に出す（画面で最初に照合したくなるのはボス）。
+    const units = [...(cast.groups[g.key] ?? [])].sort(
+      (a, b) => Number(b.isBoss ?? false) - Number(a.isBoss ?? false),
+    );
+    return [
+      `## ${g.heading}`,
+      units.length > 0 ? units.map(unitLine).join("\n") : EMPTY,
+      "",
+    ];
+  });
 
   return [
     heading,
     "",
-    "## 自軍（仲間）",
-    cast.allies.length > 0 ? cast.allies.map(unitLine).join("\n") : EMPTY,
-    "",
-    "## 敵",
-    enemies.length > 0 ? enemies.map(unitLine).join("\n") : EMPTY,
-    "",
-    "> 参照URLの表から自動生成し、目視確認して保存したもの（§8.4 / ticket 16）。",
+    ...sections,
+    "> 参照URLの表から自動生成し、目視確認して保存したもの（§8.4 / ticket 16・21）。",
     "> 加入・攻略の手順（誰で話しかける等）は書かない（§5.2）。",
     "",
   ].join("\n");

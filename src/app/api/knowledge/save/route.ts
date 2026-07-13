@@ -1,21 +1,16 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { gameDir } from "@/lib/games";
+import { gameDir, isValidGameSlug, loadGameDef } from "@/lib/games";
 import { chapterFileName } from "@/lib/knowledge";
 
 /**
- * 保存先のゲーム。ticket 20 の時点では FE 固定（`/knowledge` をゲームごとに切り替える
- * のは ticket 21）。ここを可変にするときは、slug をサーバ側で検証する `gameDir` を
- * 必ず通すこと——このファイルはリポジトリで唯一 `writeFile` を持つ。
- */
-const KNOWLEDGE_GAME = "fe-fc";
-
-/**
- * 目視確認した章キャスト表を `knowledge/fe-fc/chapters/` に書き出す（ticket 16）。
+ * 目視確認した章キャスト表を `knowledge/<game>/chapters/` に書き出す（ticket 16 / 21）。
  *
- * ファイル名はサーバ側で章番号から組み立てる。クライアントから受け取った文字列を
- * パスに使わない（`../` 等のトラバーサルを構造的に不可能にする）。
+ * **リポジトリで唯一 `writeFile` を持つファイル。** パスは必ずサーバ側で組み立てる——
+ * ゲームslug は `gameDir` が `[a-z0-9-]+` で検証し、ファイル名は章番号から作る。クライアントから
+ * 受け取った文字列をそのままパスに使わない（`../` 等のトラバーサルを構造的に不可能にする）。
+ * 実在しないゲームへの書き込みも弾く（`knowledge/` にゴミのディレクトリを作らせない）。
  */
 
 interface SaveChapter {
@@ -33,15 +28,18 @@ class SaveError extends Error {
   }
 }
 
-function parseRequest(body: unknown): SaveChapter[] {
+function parseRequest(body: unknown): { game: string; chapters: SaveChapter[] } {
   if (typeof body !== "object" || body === null) {
     throw new SaveError("リクエスト本文が不正です（JSON オブジェクトが必要）。", 400);
   }
-  const { chapters } = body as Record<string, unknown>;
+  const { game, chapters } = body as Record<string, unknown>;
+  if (typeof game !== "string" || !isValidGameSlug(game)) {
+    throw new SaveError("game（ゲームslug）が不正です。", 400);
+  }
   if (!Array.isArray(chapters) || chapters.length === 0) {
     throw new SaveError("chapters（1件以上の配列）が必要です。", 400);
   }
-  return chapters.map((c) => {
+  const parsed = chapters.map((c) => {
     if (typeof c !== "object" || c === null) {
       throw new SaveError("chapters の要素はオブジェクトで指定してください。", 400);
     }
@@ -59,6 +57,7 @@ function parseRequest(body: unknown): SaveChapter[] {
     }
     return { chapter, markdown };
   });
+  return { game, chapters: parsed };
 }
 
 export async function POST(req: Request): Promise<Response> {
@@ -66,9 +65,14 @@ export async function POST(req: Request): Promise<Response> {
     const body = await req.json().catch(() => {
       throw new SaveError("リクエスト本文を JSON として解釈できません。", 400);
     });
-    const chapters = parseRequest(body);
+    const { game, chapters } = parseRequest(body);
 
-    const dir = path.join(gameDir(KNOWLEDGE_GAME), "chapters");
+    // 実在するゲームにだけ書く（未登録の slug で新しいディレクトリを作らせない）。
+    if (!(await loadGameDef(game))) {
+      throw new SaveError(`ゲーム定義が見つかりません: ${game}`, 404);
+    }
+
+    const dir = path.join(gameDir(game), "chapters");
     await mkdir(dir, { recursive: true });
 
     const saved: string[] = [];

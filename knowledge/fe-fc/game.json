@@ -3,5 +3,26 @@
   "version": "ファミコン版（1990）",
   "progressLabel": "到達章",
   "progressPlaceholder": "例: 第2章",
-  "lostLabel": "失った仲間（ロスト）"
+  "lostLabel": "失った仲間（ロスト）",
+  "knowledgeBuilder": {
+    "sectionHeading": "^(?:Map[.．]?\\s*(\\d{1,2})\\b|第\\s*(\\d{1,2})\\s*章|Chapter\\s+(\\d{1,2})\\b)",
+    "sectionLabel": "第{n}章",
+    "subject": "ファミコン版『ファイアーエムブレム 暗黒竜と光の剣』（1990・FE1）",
+    "groups": [
+      {
+        "key": "allies",
+        "heading": "自軍（仲間）",
+        "description": "ユニットのステータス表に行として載っている人物。職業が海賊・盗賊などでも、その表に載っていればこちらに入れる（敵から仲間になるユニットも同じ表に載っているため。職業で敵味方を判断しない）。",
+        "accumulate": true
+      },
+      {
+        "key": "enemies",
+        "heading": "敵",
+        "description": "BOSS や敵と明示された記述だけ。ボスは isBoss を true にする。",
+        "accumulate": false
+      }
+    ],
+    "fields": ["klass", "lv", "hp", "items", "isBoss", "count"],
+    "extra": "後発作品（紋章の謎・新暗黒竜 等）の知識を混ぜない。テキストに書いてあることだけ。"
+  }
 }

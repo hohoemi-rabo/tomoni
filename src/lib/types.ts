@@ -26,6 +26,41 @@ export interface State {
  * 「そのゲームをどう呼ぶか」だけを持つ。**AIの振る舞いは書かない**（prompt.ts）。
  * **そのゲームの前提も書かない**（primer.md）。
  */
+/**
+ * 章キャスト表の抽出設定（`game.json` の任意フィールド・§8.4・ticket 21）。
+ *
+ * **無いゲームでは `/knowledge` の章抽出を使えない**（＝知識ファイルは手書き、または
+ * スクショから Claude Code に起こさせる）。「どんなゲームの表も読める1つの賢いスキーマ」は
+ * 存在しないので、汎用の抽出器を作ろうとしないこと。宣言できるものだけ宣言する。
+ */
+export interface KnowledgeBuilderDef {
+  /** 章見出しの正規表現（1つ目のキャプチャ群が章番号）。行頭に当てる。 */
+  sectionHeading: string;
+  /** 章の呼び方。`{n}` が章番号に置き換わる（例: "第{n}章"）。 */
+  sectionLabel: string;
+  /** 抽出対象の同定（版の取り違え防止）。プロンプト冒頭に置く。 */
+  subject: string;
+  /** ユニットの分類。表の見出しと、章をまたいで累積するかを持つ。 */
+  groups: KnowledgeGroupDef[];
+  /** LLM に埋めさせる列（`CastUnit` の任意フィールドから選ぶ）。 */
+  fields: KnowledgeField[];
+  /** そのゲーム固有の抽出上の注意（任意）。 */
+  extra?: string;
+}
+
+export interface KnowledgeGroupDef {
+  /** 内部キー（`allies` 等）。 */
+  key: string;
+  /** 生成する Markdown の見出し（`## 自軍（仲間）` 等）。 */
+  heading: string;
+  /** 何をこのグループに入れるかの説明（LLM への指示になる）。 */
+  description: string;
+  /** 第1章から累積するか（FEの自軍のように「その章で新規加入した人しか表に載らない」場合）。 */
+  accumulate?: boolean;
+}
+
+export type KnowledgeField = "klass" | "lv" | "hp" | "items" | "isBoss" | "count";
+
 export interface GameDef {
   /** ディレクトリ名（`[a-z0-9-]+`）。ファイル名から復元するので JSON には書かない。 */
   slug: string;
@@ -39,6 +74,8 @@ export interface GameDef {
   progressPlaceholder?: string;
   /** 失った仲間（`state.lost_units`）の呼び方。**省略＝その概念が無い＝出さない**。 */
   lostLabel?: string;
+  /** 章キャスト表の抽出設定（任意・ticket 21）。**無ければ `/knowledge` の章抽出は使えない**。 */
+  knowledgeBuilder?: KnowledgeBuilderDef;
 }
 
 /** 戦友AIのキャラ設定（最小・緩い形）。詳細はプロンプト組み立て側で扱う。 */

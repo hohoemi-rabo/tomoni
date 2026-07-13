@@ -1,14 +1,22 @@
 import Link from "next/link";
 
 import KnowledgeClient from "@/app/knowledge/KnowledgeClient";
+import { listGames } from "@/lib/games";
 
 /**
- * 章キャスト表の生成ページ（ticket 16・§8.4）。
+ * 章キャスト表の生成ページ（ticket 16 / 21・§8.4）。
  *
- * 参照URLから名簿の下書きを作り、目視確認して `knowledge/fe-fc/chapters/` に保存する
+ * 参照URLから名簿の下書きを作り、目視確認して `knowledge/<game>/chapters/` に保存する
  * 一度きりの道具。実況ループからは呼ばない独立ハーネス（`/capture-test` と同じ位置づけ）。
+ *
+ * ゲームは `game.json` の一覧から選ぶ。**`knowledgeBuilder` を持たないゲームでは使えない**
+ * （章構造を持たないゲームまで1つの抽出スキーマで読もうとしない・ticket 21）。
  */
-export default function KnowledgePage() {
+export const dynamic = "force-dynamic";
+
+export default async function KnowledgePage() {
+  const games = await listGames();
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 p-8">
       <Link
@@ -24,7 +32,13 @@ export default function KnowledgePage() {
         <strong>必ず中身を確認してから保存してください</strong>。
         参照先の利用規約と robots.txt を確認したうえで、取得は一度きりに留めること。
       </p>
-      <KnowledgeClient />
+      <KnowledgeClient
+        games={games.map((g) => ({
+          slug: g.slug,
+          title: g.title,
+          supported: Boolean(g.knowledgeBuilder),
+        }))}
+      />
     </main>
   );
 }
