@@ -2,19 +2,23 @@ import Link from "next/link";
 
 import DeletePlaythroughButton from "@/app/DeletePlaythroughButton";
 import NewPlaythroughForm from "@/app/NewPlaythroughForm";
+import { listGames } from "@/lib/games";
 import { listPlaythroughs } from "@/lib/playthroughs";
 
 // 一覧は常に Supabase の現在値を反映する（プリレンダのキャッシュを避ける）。
 export const dynamic = "force-dynamic";
 
 /**
- * トップ画面（ticket 09・REQUIREMENTS §10）。プレイスルー一覧と新規作成。
+ * トップ画面（ticket 09 / 20・REQUIREMENTS §10）。プレイスルー一覧と新規作成。
  *
- * 取得は Server Component（`listPlaythroughs`）、作成フォームだけ Client。
- * 単一ユーザー・認証なし・FC版FE専用（複数ゲーム差し替えUIは作らない）。
+ * 取得は Server Component（`listPlaythroughs` / `listGames`）、作成フォームだけ Client。
+ * 単一ユーザー・認証なし。ゲームは `knowledge/<slug>/game.json` の一覧から選ぶ。
  */
 export default async function Home() {
-  const playthroughs = await listPlaythroughs();
+  const [playthroughs, games] = await Promise.all([
+    listPlaythroughs(),
+    listGames(),
+  ]);
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 p-8">
@@ -27,7 +31,7 @@ export default async function Home() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">新しい冒険を始める</h2>
-        <NewPlaythroughForm />
+        <NewPlaythroughForm games={games} />
       </section>
 
       <section className="flex flex-col gap-3">

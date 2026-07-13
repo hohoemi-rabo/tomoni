@@ -60,22 +60,22 @@ alter table public.playthroughs add column game text not null default 'fe-fc';
 
 ## Todo
 
-- [ ] `supabase/migrations/0002_add_game.sql`：`playthroughs.game` を追加（既定 `'fe-fc'`）。Supabase MCP の `apply_migration` で適用
-- [ ] `knowledge/fe-fc/fe-primer.md` → `primer.md` にリネーム
-- [ ] `knowledge/fe-fc/game.json` を作成（上記）
-- [ ] `src/lib/games.ts`（新規・`server-only`）：`loadGameDef(slug)` / `listGames()`。`knowledge/*/game.json` を読むだけ。**slug は `[a-z0-9-]+` に制限し、`path.join` の前に検証する**（パストラバーサル封じ。`/knowledge` の save が同じ理由で章番号をサーバ側で組み立てている）
-- [ ] `src/lib/knowledge.ts`：`KNOWLEDGE_DIR` 定数を捨て、`loadPrimer(game)` / `loadChapterCast(game, chapter)` に引数を足す。ファイル名は `primer.md`
-- [ ] `src/lib/types.ts`：`Playthrough.game: string` と `GameDef` を追加
-- [ ] `src/lib/playthroughs.ts`：`createPlaythrough` が `game` を受け取り保存する
-- [ ] `src/lib/prompt.ts`：`gameDef` を受け取り、state セクションの見出しを `progressLabel` / `lostLabel` から組む（「到達章」「失った仲間（ロスト）」の直書きを消す）
-- [ ] `src/app/api/narrate/route.ts`：`playthrough.game` でプライマーと章ファイルを引く
-- [ ] `src/app/api/end-session/route.ts`：`chapter` 手入力のラベルをゲーム定義から。プロンプト内の「章」語彙も差す
-- [ ] `src/app/NewPlaythroughForm.tsx`：ゲーム選択（`listGames()` の一覧）。**1本しか無ければ選択肢1つ**で従来どおり。選ぶとタイトル・バージョンの既定値が入る
-- [ ] `src/app/session/[id]/SessionClient.tsx` / `page.tsx`：「到達章」の表示・入力ラベルを `progressLabel` / `progressPlaceholder` から
-- [ ] `knowledge/fe-fc/README.md` を新しい構成に合わせて更新
-- [ ] 検証：FE のプレイスルーが**従来どおり**動く（プライマー・章キャスト表が注入され、版・ロスト・手順拒否が保たれる）
-- [ ] 検証：ダミーのゲーム定義（`knowledge/_dummy/`）を1つ足し、**コードを触らずに**新規作成でそれを選べて、そのプライマーが注入されること。確認したら消す
-- [ ] `REQUIREMENTS.md` の §5.2 / §7.2 / §7.3 / §8 / §9 / §10 / §12 を改訂（**このチケットに着手する前に済ませた**）
+- [×] `supabase/migrations/0002_add_game.sql`：`playthroughs.game` を追加（既定 `'fe-fc'`）。Supabase MCP の `apply_migration` で適用
+- [×] `knowledge/fe-fc/fe-primer.md` → `primer.md` にリネーム
+- [×] `knowledge/fe-fc/game.json` を作成（上記）
+- [×] `src/lib/games.ts`（新規・`server-only`）：`loadGameDef(slug)` / `listGames()`。`knowledge/*/game.json` を読むだけ。**slug は `[a-z0-9-]+` に制限し、`path.join` の前に検証する**（パストラバーサル封じ。`/knowledge` の save が同じ理由で章番号をサーバ側で組み立てている）
+- [×] `src/lib/knowledge.ts`：`KNOWLEDGE_DIR` 定数を捨て、`loadPrimer(game)` / `loadChapterCast(game, chapter)` に引数を足す。ファイル名は `primer.md`
+- [×] `src/lib/types.ts`：`Playthrough.game: string` と `GameDef` を追加
+- [×] `src/lib/playthroughs.ts`：`createPlaythrough` が `game` を受け取り保存する
+- [×] `src/lib/prompt.ts`：`gameDef` を受け取り、state セクションの見出しを `progressLabel` / `lostLabel` から組む（「到達章」「失った仲間（ロスト）」の直書きを消す）
+- [×] `src/app/api/narrate/route.ts`：`playthrough.game` でプライマーと章ファイルを引く
+- [×] `src/app/api/end-session/route.ts`：**変更不要だった**。要約プロンプト（`END_SESSION_SYSTEM`）に「章」語彙は無く（コメントとフィールド名だけ）、`chapter` は手入力をそのまま反映するので、ラベルは UI 側（`SessionClient`）を直せば足りる
+- [×] `src/app/NewPlaythroughForm.tsx`：ゲーム選択（`listGames()` の一覧）。**1本しか無ければ選択肢1つ**で従来どおり。選ぶとタイトル・バージョンの既定値が入る
+- [×] `src/app/session/[id]/SessionClient.tsx` / `page.tsx`：「到達章」の表示・入力ラベルを `progressLabel` / `progressPlaceholder` から
+- [×] `knowledge/fe-fc/README.md` を新しい構成に合わせて更新
+- [×] 検証：FE のプレイスルーが**従来どおり**動く（プライマー・章キャスト表が注入され、版・ロスト・手順拒否が保たれる）
+- [×] 検証：ダミーのゲーム定義（`knowledge/_dummy/`）を1つ足し、**コードを触らずに**新規作成でそれを選べて、そのプライマーが注入されること。確認したら消す
+- [×] `REQUIREMENTS.md` の §5.2 / §7.2 / §7.3 / §8 / §9 / §10 / §12 を改訂（**このチケットに着手する前に済ませた**）
 
 ## 完了条件
 

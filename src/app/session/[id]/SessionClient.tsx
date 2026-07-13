@@ -36,9 +36,14 @@ const DEFAULT_FONT_IDX = 2; // text-5xl
 export default function SessionClient({
   playthroughId,
   initialChapter,
+  progressLabel,
+  progressPlaceholder,
 }: {
   playthroughId: string;
   initialChapter: string;
+  /** 進捗の呼び方（`game.json` から・ticket 20）。「到達章」「現在のエリア」等。 */
+  progressLabel: string;
+  progressPlaceholder?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   // VideoPreview は親が安定参照を渡す前提。インライン関数だとストリーミング中の
@@ -333,15 +338,16 @@ export default function SessionClient({
           セッションを終了して保存
         </h2>
         <p className="text-xs text-black/45 dark:text-white/45">
-          今回の実況を要約して「前回までのあらすじ」に保存します（次回に反映）。到達章も更新できます。
+          今回の実況を要約して「前回までのあらすじ」に保存します（次回に反映）。
+          {progressLabel}も更新できます。
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm">
-            到達章
+            {progressLabel}
             <input
               value={chapterInput}
               onChange={(e) => setChapterInput(e.target.value)}
-              placeholder="例: 第2章"
+              placeholder={progressPlaceholder}
               className="w-32 rounded border border-black/15 bg-background px-2 py-1 text-foreground dark:border-white/15"
             />
           </label>

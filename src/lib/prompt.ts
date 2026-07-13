@@ -1,4 +1,13 @@
-import type { Persona, State } from "@/lib/types";
+import type { GameDef, Persona, State } from "@/lib/types";
+
+/**
+ * 進捗（`state.chapter`）の呼び方の既定。`game.json` が `progressLabel` を持たないときに使う。
+ *
+ * **この定数はここ（prompt.ts）に置く。** 本モジュールは値を import しない純関数のままに
+ * しておく——そうすることで `node --experimental-strip-types src/lib/prompt.ts` で直接
+ * 実行して検証できる（`@/` エイリアスは node が解決できないため、型のみ import が条件）。
+ */
+export const DEFAULT_PROGRESS_LABEL = "進行状況";
 
 /**
  * 戦友AIのシステムプロンプト組み立て（REQUIREMENTS §2 / §7.3）。
@@ -18,6 +27,11 @@ export interface BuildSystemPromptInput {
   persona: Persona;
   /** 全章共通プライマー（loadPrimer の結果）。先頭に固定する。 */
   primer: string;
+  /**
+   * ゲーム定義（§8.0）。**進捗・ロストの「呼び方」だけ**に使う。
+   * 未指定なら既定のゲーム非依存な言い方にフォールバックする。
+   */
+  gameDef?: GameDef;
   /** 軽い継続性の state（任意）。無くても実況は成立する。 */
   state?: State;
   /** 現在章のキャスト表（loadChapterCast の結果・無ければ null）。 */
@@ -31,6 +45,7 @@ export interface BuildSystemPromptInput {
 export function buildSystemPrompt({
   persona,
   primer,
+  gameDef,
   state,
   chapterCast,
   recentLines,
@@ -73,7 +88,7 @@ export function buildSystemPrompt({
   }
 
   // 4. これまでの状況（state の存在フィールドのみ）。
-  const stateLines = buildStateLines(state);
+  const stateLines = buildStateLines(state, gameDef);
   if (stateLines.length > 0) {
     sections.push(
       ["## これまでの状況（参考・継続性）", "", ...stateLines].join("\n"),
@@ -121,13 +136,22 @@ function personaLines(persona: Persona): string[] {
   return lines;
 }
 
-/** state の存在するフィールドだけを参考情報の行にする。 */
-function buildStateLines(state?: State): string[] {
+/**
+ * state の存在するフィールドだけを参考情報の行にする。
+ * 進捗・ロストの**呼び方**は `game.json` から差す（FE語彙をここに直書きしない）。
+ * `lostLabel` が無いゲームは「失った仲間」という概念自体を持たないので、行ごと出さない。
+ */
+function buildStateLines(state?: State, gameDef?: GameDef): string[] {
   if (!state) return [];
   const lines: string[] = [];
-  if (state.chapter?.trim()) lines.push(`- 到達章: ${state.chapter.trim()}`);
-  if (state.lost_units && state.lost_units.length > 0) {
-    lines.push(`- 失った仲間（ロスト）: ${state.lost_units.join("、")}`);
+  const progressLabel = gameDef?.progressLabel?.trim() || DEFAULT_PROGRESS_LABEL;
+  const lostLabel = gameDef?.lostLabel?.trim();
+
+  if (state.chapter?.trim()) {
+    lines.push(`- ${progressLabel}: ${state.chapter.trim()}`);
+  }
+  if (lostLabel && state.lost_units && state.lost_units.length > 0) {
+    lines.push(`- ${lostLabel}: ${state.lost_units.join("、")}`);
   }
   if (state.progress?.trim()) lines.push(`- 進捗: ${state.progress.trim()}`);
   if (state.last_session_summary?.trim()) {

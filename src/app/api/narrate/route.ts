@@ -1,4 +1,5 @@
 import { GEMINI_NARRATE_MODEL } from "@/lib/config";
+import { loadGameDef } from "@/lib/games";
 import { getGeminiClient, SAFETY_SETTINGS_BLOCK_NONE } from "@/lib/gemini";
 import { loadChapterCast, loadPrimer } from "@/lib/knowledge";
 import { getPlaythrough } from "@/lib/playthroughs";
@@ -91,12 +92,9 @@ export async function POST(req: Request): Promise<Response> {
     const { playthroughId, imageBase64, recentLines, userMessage, isIdle } =
       parseRequest(body);
 
-    // プレイスルー（DB）とプライマー（fs）は独立なので並列に読む。
-    // 現在章のキャスト表だけは state.chapter に依存するため後段で読む（§7.2）。
-    const [playthrough, primer] = await Promise.all([
-      getPlaythrough(playthroughId),
-      loadPrimer(),
-    ]);
+    // どの知識を読むかはプレイスルーのゲームで決まる（§7.2・ticket 20）ので、
+    // まず DB を読む。プライマー・ゲーム定義・章キャスト表は fs から並列に読む。
+    const playthrough = await getPlaythrough(playthroughId);
     if (!playthrough) {
       throw new NarrateError(
         `プレイスルーが見つかりません: ${playthroughId}`,
@@ -104,11 +102,16 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    const chapterCast = await loadChapterCast(playthrough.state.chapter);
+    const [primer, gameDef, chapterCast] = await Promise.all([
+      loadPrimer(playthrough.game),
+      loadGameDef(playthrough.game),
+      loadChapterCast(playthrough.game, playthrough.state.chapter),
+    ]);
 
     const systemPrompt = buildSystemPrompt({
       persona: playthrough.persona,
       primer,
+      gameDef: gameDef ?? undefined,
       state: playthrough.state,
       chapterCast,
       recentLines,

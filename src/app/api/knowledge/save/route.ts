@@ -1,7 +1,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { chapterFileName, KNOWLEDGE_DIR } from "@/lib/knowledge";
+import { gameDir } from "@/lib/games";
+import { chapterFileName } from "@/lib/knowledge";
+
+/**
+ * 保存先のゲーム。ticket 20 の時点では FE 固定（`/knowledge` をゲームごとに切り替える
+ * のは ticket 21）。ここを可変にするときは、slug をサーバ側で検証する `gameDir` を
+ * 必ず通すこと——このファイルはリポジトリで唯一 `writeFile` を持つ。
+ */
+const KNOWLEDGE_GAME = "fe-fc";
 
 /**
  * 目視確認した章キャスト表を `knowledge/fe-fc/chapters/` に書き出す（ticket 16）。
@@ -60,7 +68,7 @@ export async function POST(req: Request): Promise<Response> {
     });
     const chapters = parseRequest(body);
 
-    const dir = path.join(KNOWLEDGE_DIR, "chapters");
+    const dir = path.join(gameDir(KNOWLEDGE_GAME), "chapters");
     await mkdir(dir, { recursive: true });
 
     const saved: string[] = [];

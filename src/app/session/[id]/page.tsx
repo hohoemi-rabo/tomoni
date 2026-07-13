@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import SessionClient from "@/app/session/[id]/SessionClient";
+import { loadGameDef } from "@/lib/games";
 import { getPlaythrough } from "@/lib/playthroughs";
+import { DEFAULT_PROGRESS_LABEL } from "@/lib/prompt";
 
 /**
  * セッション画面（ticket 10・REQUIREMENTS §5.1 / §10）。
@@ -18,6 +20,10 @@ export default async function SessionPage({
   const { id } = await params; // Next 15: params は非同期。
   const playthrough = await getPlaythrough(id);
   if (!playthrough) notFound();
+
+  // 進捗の呼び方はゲーム定義から（ticket 20）。定義が無くても画面は出す。
+  const gameDef = await loadGameDef(playthrough.game);
+  const progressLabel = gameDef?.progressLabel?.trim() || DEFAULT_PROGRESS_LABEL;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
@@ -40,6 +46,8 @@ export default async function SessionPage({
       <SessionClient
         playthroughId={playthrough.id}
         initialChapter={playthrough.state?.chapter ?? ""}
+        progressLabel={progressLabel}
+        progressPlaceholder={gameDef?.progressPlaceholder}
       />
     </main>
   );

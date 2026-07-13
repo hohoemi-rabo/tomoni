@@ -2,10 +2,15 @@
 
 AIの**感情・反応を正しくする前提**と、**今この章に誰がいるか**だけを持つ最小限の知識。2階建て構成（`REQUIREMENTS §8`）。
 
-- `fe-primer.md` … 全章共通プライマー1枚。システムプロンプト先頭に固定。
+- `game.json` … ゲーム定義（§8.0・チケット20）。表示名・版・**進捗の呼び方**（`progressLabel` =「到達章」）・`lostLabel`。**AIの振る舞いも、ゲームの前提も書かない**（前者は `src/lib/prompt.ts`、後者は `primer.md`）。
+- `primer.md` … 全章共通プライマー1枚。システムプロンプト先頭に固定。**このゲームの前提だけ**（同定・感情が動く場面・何が「手順」か・画面認識上の固有事情）。
 - `chapters/chapter-XX.md` … 章ごとのキャスト表。`state.chapter` に対応する**1枚だけ**注入する（番号で引くだけの最小リトリーバル）。`chapter-01.md`, `chapter-02.md` … と**ASCII・ゼロ埋め2桁**で並べる。日本語の章タイトルは中の見出し（`# 第1章 …`）で保持。
 
-ローダーは `src/lib/knowledge.ts`（`loadPrimer` / `loadChapterCast`）。`state.chapter` が「第3章」なら `chapters/chapter-03.md` を読む。該当ファイルが無ければ未注入で続行する。
+ローダーは `src/lib/games.ts`（`loadGameDef` / `listGames`）と `src/lib/knowledge.ts`（`loadPrimer(game)` / `loadChapterCast(game, chapter)`）。どのディレクトリを読むかは `playthroughs.game` が決める。`state.chapter` が「第3章」なら `chapters/chapter-03.md` を読み、該当ファイルが無ければ未注入で続行する。
+
+## ゲームを増やすには（チケット20）
+
+**コードは触らない。** `knowledge/<slug>/`（slug は `[a-z0-9-]+`）を作り、`game.json` と `primer.md` を置くだけ。トップの新規作成フォームの選択肢に自動で現れる。章・ステージ構造を持たないゲームは `chapters/` を作らなくてよい（キャスト表は未注入で続行する）。
 
 ## 章キャスト表の作り方 その1（参照URL → 名簿化・`/knowledge`・チケット16・§8.4）
 

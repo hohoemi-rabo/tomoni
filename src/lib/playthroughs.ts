@@ -52,6 +52,8 @@ export async function deletePlaythrough(id: string): Promise<void> {
 }
 
 export interface CreatePlaythroughInput {
+  /** 知識ディレクトリの slug（`knowledge/<game>/`・ticket 20）。 */
+  game: string;
   title: string;
   game_version: string;
   persona?: Persona;
@@ -66,6 +68,7 @@ export async function createPlaythrough(
     const { data, error } = await getSupabaseClient()
       .from("playthroughs")
       .insert({
+        game: input.game,
         title: input.title,
         game_version: input.game_version,
         persona: input.persona ?? DEFAULT_PERSONA,

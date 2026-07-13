@@ -12,7 +12,8 @@ import {
   KNOWLEDGE_MAX_URLS,
 } from "@/lib/config";
 import { getGeminiClient, SAFETY_SETTINGS_BLOCK_NONE } from "@/lib/gemini";
-import { chapterFileName, KNOWLEDGE_DIR } from "@/lib/knowledge";
+import { gameDir } from "@/lib/games";
+import { chapterFileName } from "@/lib/knowledge";
 import {
   accumulateAllies,
   type CastUnit,
@@ -244,7 +245,8 @@ async function extractAll(
 
 async function fileExists(chapter: number): Promise<boolean> {
   try {
-    await access(path.join(KNOWLEDGE_DIR, "chapters", chapterFileName(chapter)));
+    // 既存章の確認先。ticket 20 の時点では FE 固定（ゲーム切替は ticket 21）。
+    await access(path.join(gameDir("fe-fc"), "chapters", chapterFileName(chapter)));
     return true;
   } catch {
     return false;

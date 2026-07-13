@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { isValidGameSlug, loadGameDef } from "@/lib/games";
 import { createPlaythrough, deletePlaythrough } from "@/lib/playthroughs";
 
 /**
@@ -20,14 +21,21 @@ export async function createPlaythroughAction(
   _prev: CreatePlaythroughState,
   formData: FormData,
 ): Promise<CreatePlaythroughState> {
+  const game = String(formData.get("game") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
   const game_version = String(formData.get("game_version") ?? "").trim();
 
   if (!title) return { error: "タイトルを入力してください。" };
   if (!game_version) return { error: "バージョンを入力してください。" };
+  // ゲームslug は「knowledge/ に実在するもの」だけを通す（未登録のゲームで
+  // プレイスルーを作ると、実況時にプライマーが読めず 502 になる）。
+  if (!isValidGameSlug(game)) return { error: "ゲームの指定が不正です。" };
+  if (!(await loadGameDef(game))) {
+    return { error: `ゲーム定義が見つかりません: knowledge/${game}/game.json` };
+  }
 
   try {
-    await createPlaythrough({ title, game_version });
+    await createPlaythrough({ game, title, game_version });
     revalidatePath("/");
     return { ok: true };
   } catch (e) {

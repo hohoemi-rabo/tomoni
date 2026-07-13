@@ -20,6 +20,27 @@ export interface State {
   last_session_summary?: string;
 }
 
+/**
+ * ゲーム定義（`knowledge/<slug>/game.json`・§8.0・ticket 20）。
+ *
+ * 「そのゲームをどう呼ぶか」だけを持つ。**AIの振る舞いは書かない**（prompt.ts）。
+ * **そのゲームの前提も書かない**（primer.md）。
+ */
+export interface GameDef {
+  /** ディレクトリ名（`[a-z0-9-]+`）。ファイル名から復元するので JSON には書かない。 */
+  slug: string;
+  /** 表示名。新規作成フォームの既定タイトル。 */
+  title: string;
+  /** 版・機種（例: "ファミコン版（1990）"）。 */
+  version?: string;
+  /** 進捗（`state.chapter`）の呼び方（例: "到達章" / "現在のエリア"）。 */
+  progressLabel?: string;
+  /** 進捗入力欄のプレースホルダ（例: "例: 第2章"）。 */
+  progressPlaceholder?: string;
+  /** 失った仲間（`state.lost_units`）の呼び方。**省略＝その概念が無い＝出さない**。 */
+  lostLabel?: string;
+}
+
 /** 戦友AIのキャラ設定（最小・緩い形）。詳細はプロンプト組み立て側で扱う。 */
 export interface Persona {
   /** 戦友の呼び名。 */
@@ -31,6 +52,8 @@ export interface Persona {
 /** プレイスルー1件（Supabase `playthroughs` に対応・§9）。 */
 export interface Playthrough {
   id: string;
+  /** 知識ディレクトリの slug（`knowledge/<game>/`・既定 `'fe-fc'`・ticket 20）。 */
+  game: string;
   title: string;
   game_version: string;
   state: State;
