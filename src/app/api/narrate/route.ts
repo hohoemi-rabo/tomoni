@@ -5,7 +5,7 @@ import { loadChapterCast, loadPrimer } from "@/lib/knowledge";
 import { getPlaythrough } from "@/lib/playthroughs";
 import { buildSystemPrompt } from "@/lib/prompt";
 import { withRetry } from "@/lib/retry";
-import type { NarrateRequest } from "@/lib/types";
+import { TURN_KINDS, type NarrateRequest, type TurnKind } from "@/lib/types";
 
 /**
  * 実況API `POST /api/narrate`（REQUIREMENTS §7.1）。本プロジェクトの主役API。
@@ -29,21 +29,26 @@ class NarrateError extends Error {
 }
 
 /**
- * そのターンで実況させるか雑談させるか（モード選択）は、画像に隣接するこの2文だけが決める。
+ * そのターンで何をさせるか（モード選択）は、画像に隣接するこの4文だけが決める（ticket 22）。
  * 発話長・読み上げ前提などの常時の制約は systemPrompt 側（prompt.ts）にあるので、
  * ここには書かない。同趣旨の指示を2箇所に置くと、後から注入された方が先を打ち消す（ticket 14）。
  */
-const NARRATE_TURN_TEXT =
-  "今の画面です。戦友として、今この瞬間に起きていることを能動的に話してください。";
-const IDLE_TURN_TEXT =
-  "今の画面です。ただ、画面に動きがありません。今は実況をせず、語り部か励ましに回ってください。話題はひとつだけ選び、あれこれ並べないでください。画面の細部は説明しないでください。";
+const TURN_TEXT: Record<TurnKind, string> = {
+  narrate:
+    "今の画面です。戦友として、今この瞬間に起きていることを能動的に話してください。",
+  chat: "今の画面です。ただ、画面に動きがありません。今は実況をせず、語り部か励ましに回ってください。話題はひとつだけ選び、あれこれ並べないでください。画面の細部は説明しないでください。",
+  question:
+    "今の画面です。今回は、戦友として**プレイヤー本人に**軽く問いかけてください。「きみは」「〜してる?」のように相手に向けて聞くこと。『どんな戦いが待っているんだろう』のような独り言・修辞疑問にはしないでください。聞いてよいのは、プレイヤーの感想・思い出・気持ち・プレイヤー自身の選択（好きなユニット、当時の思い出、今の気分など）。答えなくても場が持つ、気軽な問いかけにしてください。問いはひとつだけ。攻略の手順を聞き出す形（「次はどこへ行く?」等、答えが最適手の指示になる問い）にはしないでください。",
+  giveup:
+    "今の画面です。さっきの問いかけに返事がありませんでした。冒頭で軽く切り上げて（「ま、いっか」程度の一言）、そのまま今の画面の実況か雑談に自然に続けてください。催促しないこと。さっきの質問を蒸し返さないこと。切り上げの一言だけで終わらせず、必ず今の話に続けること。",
+};
 
-/** 入力 `{ playthroughId, imageBase64, recentLines, userMessage, isIdle }` を検証して正規化する。 */
+/** 入力 `{ playthroughId, imageBase64, recentLines, userMessage, turnKind }` を検証して正規化する。 */
 function parseRequest(body: unknown): NarrateRequest {
   if (typeof body !== "object" || body === null) {
     throw new NarrateError("リクエスト本文が不正です（JSON オブジェクトが必要）。", 400);
   }
-  const { playthroughId, imageBase64, recentLines, userMessage, isIdle } =
+  const { playthroughId, imageBase64, recentLines, userMessage, turnKind } =
     body as Record<string, unknown>;
 
   if (typeof playthroughId !== "string" || playthroughId.trim() === "") {
@@ -65,9 +70,15 @@ function parseRequest(body: unknown): NarrateRequest {
   if (userMessage !== undefined && typeof userMessage !== "string") {
     throw new NarrateError("userMessage は文字列で指定してください。", 400);
   }
-  // isIdle は任意（自発発話）。あれば boolean であること。
-  if (isIdle !== undefined && typeof isIdle !== "boolean") {
-    throw new NarrateError("isIdle は真偽値で指定してください。", 400);
+  // turnKind は任意。あれば既知の4種であること（未知の値は黙って narrate に落とさない）。
+  if (
+    turnKind !== undefined &&
+    !TURN_KINDS.includes(turnKind as TurnKind)
+  ) {
+    throw new NarrateError(
+      `turnKind は ${TURN_KINDS.join(" / ")} のいずれかで指定してください。`,
+      400,
+    );
   }
 
   const said = (userMessage as string | undefined)?.trim();
@@ -76,8 +87,8 @@ function parseRequest(body: unknown): NarrateRequest {
     imageBase64,
     recentLines: (recentLines as string[] | undefined) ?? [],
     userMessage: userMessage as string | undefined,
-    // 話しかけられていれば、沈黙由来の自発発話より応答を優先する。
-    isIdle: said ? false : (isIdle as boolean | undefined),
+    // 話しかけられていれば、そのターンの種別より応答を優先する（§7.1）。
+    turnKind: said ? "narrate" : ((turnKind as TurnKind | undefined) ?? "narrate"),
   };
 }
 
@@ -89,7 +100,7 @@ export async function POST(req: Request): Promise<Response> {
     const body = await req.json().catch(() => {
       throw new NarrateError("リクエスト本文を JSON として解釈できません。", 400);
     });
-    const { playthroughId, imageBase64, recentLines, userMessage, isIdle } =
+    const { playthroughId, imageBase64, recentLines, userMessage, turnKind } =
       parseRequest(body);
 
     // どの知識を読むかはプレイスルーのゲームで決まる（§7.2・ticket 20）ので、
@@ -127,7 +138,7 @@ export async function POST(req: Request): Promise<Response> {
             role: "user",
             parts: [
               { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-              { text: isIdle ? IDLE_TURN_TEXT : NARRATE_TURN_TEXT },
+              { text: TURN_TEXT[turnKind ?? "narrate"] },
             ],
           },
         ],

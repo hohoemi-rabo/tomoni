@@ -25,15 +25,21 @@ export default function CaptureTestClient() {
 
   // モック送信: 実APIの代わりに約0.8秒かけて完了する（busy 挙動の再現）。
   const onSend = useCallback(
-    async ({ imageBase64, recentLines, isIdle }: SendPayload) => {
+    async ({ imageBase64, recentLines, turnKind }: SendPayload) => {
       const n = sendCountRef.current + 1;
       sendCountRef.current = n;
       setSendCount(n);
       pushLog(
-        `送信#${n}${isIdle ? "[自発]" : "[変化]"}: ${Math.round((imageBase64.length * 3) / 4 / 1024)}KB / recent=${recentLines.length}`,
+        `送信#${n}[${turnKind}]: ${Math.round((imageBase64.length * 3) / 4 / 1024)}KB / recent=${recentLines.length}`,
       );
       await new Promise((r) => setTimeout(r, 800));
-      addRecentRef.current(`（送信#${n} の擬似応答）`);
+      // 質問ターンなら「?」で終わる擬似応答を返す（返事待ち・連続質問抑止の確認用）。
+      const reply =
+        turnKind === "question"
+          ? `（送信#${n} の擬似質問）どのユニットが好き？`
+          : `（送信#${n} の擬似応答）`;
+      addRecentRef.current(reply);
+      return reply;
     },
     [pushLog],
   );

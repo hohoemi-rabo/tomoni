@@ -118,7 +118,7 @@ export default function SessionClient({
 
   // 1回の実況送信：07 をストリーム fetch → 逐次表示＋逐次読み上げ。
   const onSend = useCallback(
-    async ({ imageBase64, recentLines, userMessage, isIdle }: SendPayload) => {
+    async ({ imageBase64, recentLines, userMessage, turnKind }: SendPayload) => {
       ttsRef.current.reset(); // 新しい発言。前の再生/バッファを破棄。
       setCurrentText("");
 
@@ -130,7 +130,7 @@ export default function SessionClient({
           imageBase64,
           recentLines,
           userMessage: userMessage?.trim() || undefined,
-          isIdle,
+          turnKind,
         }),
       });
       if (!res.ok || !res.body) {
@@ -159,6 +159,8 @@ export default function SessionClient({
         setRecentLines((prev) => [line, ...prev].slice(0, RECENT_LINES_KEEP));
         sessionLinesRef.current.push(line); // end-session の要約用に全件保持。
       }
+      // 確定した発言を返す。hook 側が「問いかけで終わったか」を判定する（ticket 22）。
+      return line;
     },
     [playthroughId],
   );
@@ -263,6 +265,15 @@ export default function SessionClient({
           </button>
         )}
       </div>
+
+      {/* 返事待ち（ticket 22）。黙っている理由が「故障」ではなく「待ち」だと分かるように。
+          録画モードには出さない——視聴者に見せる画面ではない。 */}
+      {auto.awaitingAnswer && (
+        <p className="text-sm text-amber-600 dark:text-amber-400">
+          返事を待っています（話しかけるか「今の場面について話して」で先へ進みます。
+          しばらく返事が無ければ、戦友のほうから切り上げます）
+        </p>
+      )}
 
       {!stt.supported && (
         <p className="text-xs text-black/45 dark:text-white/45">

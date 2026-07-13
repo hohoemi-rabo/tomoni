@@ -34,6 +34,21 @@ export const FRAME_DIFF_THRESHOLD = 0.02;
 export const SPEAK_INTERVAL_MIN_MS = 30000;
 export const SPEAK_INTERVAL_MAX_MS = 60000;
 
+/**
+ * 質問ターンを引く確率（0〜1・ticket 22）。話しかけが無いときだけ抽選する。
+ * 高すぎると尋問になる。直前が質問だったターンは抽選自体をしない（連続質問の禁止）。
+ */
+export const QUESTION_TURN_PROBABILITY = 0.3;
+
+/**
+ * 質問したあと、返事をどれだけ待つか（ミリ秒・ticket 22）。**質問の読み上げが終わって
+ * から**計る（読み上げ中から計ると、長い質問ほど待ち時間が短くなる）。
+ *
+ * この待ちは「喋らない時間」＝動画の無音そのもの。過ぎたら `'giveup'` を1回だけ喋って
+ * 通常ループへ戻る（黙り込ませない）。実プレイで詰める前提の値。
+ */
+export const QUESTION_ANSWER_TIMEOUT_MS = 90000;
+
 /** 送信前ダウンスケールの長辺ピクセル数。FC版の低解像度なら十分読める。 */
 export const FRAME_DOWNSCALE_LONG_EDGE_PX = 512;
 

@@ -62,6 +62,25 @@ export interface Playthrough {
   updated_at: string;
 }
 
+/**
+ * そのターンでAIに何をさせるか（§7.1・ticket 22）。**旧 `isIdle` を置き換える**。
+ *
+ * - `narrate` … 画面が変化した。今この瞬間を実況する。
+ * - `chat` … 画面が止まっている。昔話・雑談・励ましに回る（旧 `isIdle: true`）。
+ * - `question` … プレイヤーへの軽い問いかけ。**答えなくても成立する**もの。
+ * - `giveup` … 返事待ちのタイムアウト。冒頭で軽く切り上げ、そのまま実況・雑談へ続ける。
+ *
+ * 実際の指示文は `/api/narrate` の4定数だけが持つ（システムプロンプトに書かない）。
+ */
+export type TurnKind = "narrate" | "chat" | "question" | "giveup";
+
+export const TURN_KINDS: readonly TurnKind[] = [
+  "narrate",
+  "chat",
+  "question",
+  "giveup",
+];
+
 /** 実況API `POST /api/narrate` の入力（§7.1）。 */
 export interface NarrateRequest {
   playthroughId: string;
@@ -69,8 +88,8 @@ export interface NarrateRequest {
   recentLines: string[];
   /** プレイヤーからの話しかけ（STT・任意・§7.5）。あれば応答に反映する。 */
   userMessage?: string;
-  /** 沈黙が続いたための自発発話か（任意・ticket 15）。実況ではなく雑談させる。 */
-  isIdle?: boolean;
+  /** そのターンの種類（任意・ticket 22）。省略時は `'narrate'`。 */
+  turnKind?: TurnKind;
 }
 
 /**

@@ -55,6 +55,21 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
   const queueRef = useRef<string[]>([]); // 確定済みで未再生の文。
   const runningRef = useRef(false); // ポンプ多重起動の防止。
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  /**
+   * 再生中の1文を「中断で終わらせる」ための解決関数（ticket 22 で判明した停止バグ）。
+   *
+   * `stopAndClear` は `pause()` するが、**pause では `ended` も `error` も発火しない**。
+   * それを待っている `playBase64` の Promise が永久に解決されず、ポンプが抜けられずに
+   * `speaking` が真のまま張り付く → 自動ループの「読み上げ中は始めない」関門（ticket 18）が
+   * 二度と開かず、AIが黙り込む。中断時はここから明示的に解決してやる。
+   */
+  const resolvePlayRef = useRef<(() => void) | null>(null);
+  /**
+   * 世代番号。`reset()`（＝新しい発言の開始）のたびに進める。走っている古いポンプは
+   * 世代のズレを見て自分から降りる——さもないと reset 前に先読みしていた音声が、
+   * 新しい発言のあとから鳴り出す。
+   */
+  const genRef = useRef(0);
 
   const updateQueueLength = useCallback(() => {
     setQueueLength(queueRef.current.length);
@@ -82,7 +97,7 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
     }
   }, []);
 
-  // base64 mp3 を再生し、再生終了（または失敗）で解決する。
+  // base64 mp3 を再生し、再生終了（または失敗・中断）で解決する。
   const playBase64 = useCallback((b64: string): Promise<void> => {
     return new Promise((resolve) => {
       let audio = audioRef.current;
@@ -94,8 +109,11 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
       const done = () => {
         el.removeEventListener("ended", done);
         el.removeEventListener("error", done);
+        resolvePlayRef.current = null;
         resolve();
       };
+      // 中断（stopAndClear）からも終わらせられるようにしておく。
+      resolvePlayRef.current = done;
       el.addEventListener("ended", done);
       el.addEventListener("error", done);
       el.src = `data:audio/mpeg;base64,${b64}`;
@@ -117,9 +135,12 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
     if (runningRef.current) return;
     runningRef.current = true;
     setSpeaking(true);
+    // このポンプの世代。reset() が入ったら（世代がズレたら）自分は降りる。
+    const myGen = genRef.current;
+    const alive = () => enabledRef.current && genRef.current === myGen;
     try {
       let pending: Promise<string | null> | null = null;
-      while (enabledRef.current && (pending || queueRef.current.length)) {
+      while (alive() && (pending || queueRef.current.length)) {
         let current = pending;
         pending = null;
         if (!current) {
@@ -132,14 +153,15 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
         if (next != null) pending = fetchTts(next);
 
         const b64 = await current;
-        if (!enabledRef.current) break;
+        if (!alive()) break; // reset された。先読み済みの音声は捨てる（鳴らさない）。
         if (b64) await playBase64(b64);
       }
     } finally {
       runningRef.current = false;
       setSpeaking(false);
     }
-    // ポンプ終了直前に積まれた文を取りこぼさないよう再確認する。
+    // ポンプ終了直前に積まれた文を取りこぼさないよう再確認する
+    // （reset 直後に新しい発言の文が積まれているのが典型）。
     if (enabledRef.current && queueRef.current.length) void pump();
   }, [dequeue, fetchTts, playBase64]);
 
@@ -171,6 +193,7 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
 
   // 再生停止＋バッファ/キュー破棄（OFF・reset・unmount で共有）。
   const stopAndClear = useCallback(() => {
+    genRef.current += 1; // 走っているポンプに「降りろ」と伝える。
     queueRef.current = [];
     bufferRef.current = "";
     updateQueueLength();
@@ -180,6 +203,9 @@ export function useTts(opts: UseTtsOptions = {}): UseTts {
       audio.removeAttribute("src");
       audio.load();
     }
+    // pause() では ended も error も出ない。待っている再生 Promise をここで終わらせる。
+    // これを忘れると speaking が真のまま張り付き、自動ループが二度と喋らなくなる。
+    resolvePlayRef.current?.();
   }, [updateQueueLength]);
 
   const reset = useCallback(() => {

@@ -40,18 +40,19 @@
 
 ## Todo
 
-- [ ] `config.ts`：`QUESTION_TURN_PROBABILITY = 0.3` / `QUESTION_ANSWER_TIMEOUT_MS = 90000` を追加
-- [ ] `types.ts`：`TurnKind = 'narrate' | 'chat' | 'question' | 'giveup'`。`NarrateRequest.isIdle` を `turnKind?: TurnKind` に置換
-- [ ] `src/lib/turn.ts`（新規・純関数）：`pickTurnKind`。乱数は引数で受ける
-- [ ] `/api/narrate`：`isIdle` の検証を `turnKind` の検証に置換（未知の値は 400）。ターン指示を4定数に。`userMessage` があれば `turnKind` を無視する既存の優先順位は維持
-- [ ] `prompt.ts`：振る舞いの層に「質問してよい（軽い投げかけ・催促しない・蒸し返さない・質問を装った手順誘導は禁止）」を追加
-- [ ] `useAutoNarration`：`SendPayload.isIdle` → `turnKind`。`send()` で `pickTurnKind` を呼ぶ。`lastWasQuestionRef` / `awaitingAnswerRef` / `answerDeadlineRef` を持つ。関門4を tick に足す。`triggerNow` は待ちを解除する
-- [ ] `useAutoNarration`：返事待ちの計測は **`canSpeak()` が真に戻った最初の tick** から始める（＝質問の読み上げが終わった時点）。タイムアウトで `'giveup'` を1回送り、待ちを解除
-- [ ] `SessionClient`：`onSend` が `turnKind` を渡す。「返事待ち」表示（録画モードには出さない）
-- [ ] 検証：`node --experimental-strip-types` で `pickTurnKind` の分岐（話しかけ優先・連続質問の抑止・差分による narrate/chat）を確認
-- [ ] 検証：`curl` で `/api/narrate` に4種の `turnKind` を投げ、質問ターンで実際に問いかけが返ること・`giveup` が「切り上げ＋実況に続く」形になること・未知の値が 400 になること
-- [ ] 検証（**必須**）：Playwright 偽カメラで **A/B**（`.claude/skills/verify/SKILL.md`）。質問後に自動ループが止まる／タイムアウトで `giveup` が1回だけ出て通常ループに戻る／手動トリガーが待ちを割り込んで解除する。`--autoplay-policy=no-user-gesture-required` を忘れない（忘れると読み上げが一瞬で終わり、返事待ちの計測開始が誤判定になる）
-- [ ] `AS-BUILT.md` の §5・§6・§7・§8・§11 を更新
+- [×] `config.ts`：`QUESTION_TURN_PROBABILITY = 0.3` / `QUESTION_ANSWER_TIMEOUT_MS = 90000` を追加
+- [×] `types.ts`：`TurnKind = 'narrate' | 'chat' | 'question' | 'giveup'`。`NarrateRequest.isIdle` を `turnKind?: TurnKind` に置換
+- [×] `src/lib/turn.ts`（新規・純関数）：`pickTurnKind`。乱数は引数で受ける
+- [×] `/api/narrate`：`isIdle` の検証を `turnKind` の検証に置換（未知の値は 400）。ターン指示を4定数に。`userMessage` があれば `turnKind` を無視する既存の優先順位は維持
+- [×] `prompt.ts`：振る舞いの層に「質問してよい（軽い投げかけ・催促しない・蒸し返さない・質問を装った手順誘導は禁止）」を追加
+- [×] `useAutoNarration`：`SendPayload.isIdle` → `turnKind`。`send()` で `pickTurnKind` を呼ぶ。`lastWasQuestionRef` / `awaitingAnswerRef` / `answerDeadlineRef` を持つ。関門4を tick に足す。`triggerNow` は待ちを解除する
+- [×] `useAutoNarration`：返事待ちの計測は **`canSpeak()` が真に戻った最初の tick** から始める（＝質問の読み上げが終わった時点）。タイムアウトで `'giveup'` を1回送り、待ちを解除
+- [×] `SessionClient`：`onSend` が `turnKind` を渡す。「返事待ち」表示（録画モードには出さない）
+- [×] 検証：`node --experimental-strip-types` で `pickTurnKind` の分岐（話しかけ優先・連続質問の抑止・差分による narrate/chat）を確認
+- [×] 検証：`curl` で `/api/narrate` に4種の `turnKind` を投げ、質問ターンで実際に問いかけが返ること・`giveup` が「切り上げ＋実況に続く」形になること・未知の値が 400 になること
+- [×] 検証（**必須**）：Playwright 偽カメラで **A/B**（`.claude/skills/verify/SKILL.md`）。質問後に自動ループが止まる／タイムアウトで `giveup` が1回だけ出て通常ループに戻る／手動トリガーが待ちを割り込んで解除する。`--autoplay-policy=no-user-gesture-required` を忘れない（忘れると読み上げが一瞬で終わり、返事待ちの計測開始が誤判定になる）
+- [×] `AS-BUILT.md` の §1・§5・§6・§7・§8・§11 を更新
+- [×] **`useTts` の停止バグを修正**（22 で判明・既存バグ）：`pause()` は `ended`/`error` を発火しないため、中断された再生の Promise が解決されず `speaking` が張り付き、読み上げ中に割り込むとループが二度と喋らなくなっていた。中断時に再生 Promise を明示解決し、世代番号で古いポンプを降ろす
 
 ## 完了条件
 
