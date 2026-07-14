@@ -12,20 +12,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **実装の進捗は `docs/00-index.md` のチケット No. と各チケットの `## Todo` で管理する**。完了チケットの再実装や、未完チケットの先読み実装をしないこと。現状は下記「現在の実装状況」を参照。
 
-**Phase 1（MVP・01〜13）・Phase 2（14〜19）・Phase 3 のうち 20（ゲームの汎用化）・21（`/knowledge` のゲームごと抽出）・22（会話形式）は実装完了。残るは 23（ゲーム登録＝primer 下書き生成）だけで、起票済み・未着手。** 実装順は **20 → 22 → 21 → 23**（合意済み）。新たな要件は新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。18・19・22 は実プレイでの詰め（発話間隔・返事待ち時間の値）が Todo に残っている。
+**Phase 1（MVP・01〜13）・Phase 2（14〜19）・Phase 3（20〜23）はすべて実装完了。起票済みの未着手チケットは無い。** 新たな要件は新チケットとして `docs/` に追加してから着手する（先読み実装の禁止は継続）。18・19・22 は実プレイでの詰め（発話間隔・返事待ち時間の値）が Todo に残っている。
 
 ### 企画の核（14・16・20・22 で方針転換した。古い前提で判断しないこと）
 
 - **ネタバレはしてよい**（14 で禁止を撤廃）。「一緒に初見で驚く」より「誰かと一緒にやっている実感」を優先する。
 - **攻略アドバイスはしない**（維持。これだけは一貫して強い制約）。線引きは **「事実は語る、手順は言わない」**。「あの剣士はナバール。実は仲間になる」＝OK ／「シーダで話しかけて」＝NG。
 - **参照サイトからの取得はしてよい**（16 で禁止を撤廃）。ただし `/knowledge` での**名簿化のための一度きりの取得**に限る。散文（攻略手順）は捨て、目視確認してから保存する。実況ループからは取得しない。攻略ナレッジの大量注入と RAG は引き続き禁止。
-- **ゲームは差し替え可能**（20/21 で「FC版FE専用」を撤廃・**実装済み**）。`knowledge/<slug>/` に `game.json` と `primer.md` を置けばゲームが増える（**`src/` を1行も触らない**）。**FC版FE は引き続き第一の題材**で、汎用化で FE の作り込み（ロストを悼む・命中に一喜一憂）を薄めない——それらはゲーム固有の層（プライマー）に置く。汎用化を口実に攻略ナレッジを積まないこと。
+- **ゲームは差し替え可能**（20/21 で「FC版FE専用」を撤廃・**実装済み**）。`knowledge/<slug>/` に `game.json` と `primer.md` を置けばゲームが増える（**`src/` を1行も触らない**）。**その2ファイルは `/knowledge` から生成できる**（23・**実装済み**。タイトル・機種・発売時期＋URL → primer の下書き → 目視確認・手直し → 保存）。**下書きは「確認済み」ではない**——LLM は版を取り違えても静かに間違う。`⚠️要確認` は開発者が一次情報で裏取りする。**FC版FE は引き続き第一の題材**で、汎用化で FE の作り込み（ロストを悼む・命中に一喜一憂）を薄めない——それらはゲーム固有の層（プライマー）に置く。汎用化を口実に攻略ナレッジを積まないこと。
 - **AIから質問してよい**（22・**実装済み**）。ターンは **実況／雑談／質問／切り上げ** の4種（`turnKind`）。質問は**答えなくても成立する軽い投げかけ**で、返事が無ければ 90秒で自分から切り上げる（黙り込ませない）。**禁じるのは「質問の形をした手順誘導」**（「シーダで話しかけてみたら?」）と、催促・蒸し返し。あいきょうの「厳格な1問1答」には戻さない。
 
 ### 未確認・宿題
 
 - 章キャスト表は第1〜25章まで `/knowledge` から生成・目視確認・保存済み（`knowledge/fe-fc/chapters/chapter-01.md` 〜 `chapter-25.md`）。AI は画面に名前が出ていれば、その章の1ファイルと照合して固有名を特定できる。
-- **2本目のゲームは未定。** 汎用化（20/21）はダミーのゲーム定義で受け入れ済みで、**実ゲームでの検証はこれから**（本当に汎用かは2本目を通すまで分からない）。
+- **2本目のゲームは未定**（本採用のものは無い）。ただし汎用化は**実ゲームで一度通した**——23 の検証で『スーパーマリオブラザーズ』（FC・1985／章もロストも無い）を `/knowledge` から登録し、そのまま実況が成立することを確認した（検証後に削除済み）。
 - **実プレイでの値の詰めが残っている**：発話間隔（30〜60秒）・返事待ち（90秒）・質問確率（0.3）。返事待ちは**そのまま動画の無音**になるので、実際に撮ってみて詰める。
 - 実機での通し確認（OBS仮想カメラ→自動実況→読み上げ→録画モード→STT、質問と返事待ち）は開発者の手動確認に委ねる。
 
@@ -102,8 +102,9 @@ AIの**感情・反応を正しくする前提**と**今この章に誰がいる
 - **セッション画面（10）+ 録画モード（11）**: `src/app/session/[id]/page.tsx`（Server Component・`params` を `await`・`getPlaythrough`→無ければ `notFound()`）・`src/app/session/[id]/SessionClient.tsx`（`'use client'` 統合本体。VideoPreview＋useAutoNarration＋useTts を配線。`onSend` で `/api/narrate` をストリーム fetch→逐次表示＋`useTts.feed`、直近発言を保持・表示。onSend↔addRecentLine の循環は ref で解消）。**MVP完成条件（取り込み→自動実況→読み上げ）がこの画面で通る。** 録画モードは同ファイル内の `fixed inset-0` 全画面オーバーレイ（単色背景に AI発言＝`currentText` だけ中央大表示・文字サイズ段階 `RECORDING_FONT_STEPS`・Esc/終了で解除・ループは止めない）。
 - **state更新／継続性（12）**: `src/app/api/end-session/route.ts`（`POST`・実況ログを `gemini-2.5-flash-lite` で構造化JSON要約→`last_session_summary`/`progress` を生成、`chapter` は手入力を反映、`updatePlaythroughState` で jsonb マージ）。SessionClient に「セッション終了して保存」UI（到達章入力＋保存・`sessionLinesRef` で全発言保持）。再開時は `buildStateLines` が `last_session_summary` を「前回までのあらすじ」として注入（配線済み）。
 - **STT／音声で話しかける（13・任意）**: `src/hooks/useSpeechRecognition.ts`（`'use client'`・Web Speech の最小ラッパ・非対応時 `supported=false`）。SessionClient で「押して話す」→認識テキストを `useAutoNarration.triggerNow(userMessage)` 経由で送信。`/api/narrate` は `userMessage`（任意）を受け、`buildSystemPrompt` が「プレイヤーからの話しかけ」セクションとして注入する。
+- **ゲーム登録（23）**: `src/lib/primer-render.ts`（純関数のみ・`renderPrimerMarkdown`。構造化JSON → §8.1 の体裁。**`⚠️要確認` を付けるのもここ**＝LLM に記号も Markdown も書かせない。**型のみ import** を崩さないこと）・`src/app/api/knowledge/register/route.ts`（`{ title, platform, releasedAt, urls }` → 取得（文字コード判定は 16 と共通・本文は `KNOWLEDGE_PRIMER_MAX_TEXT_CHARS`）→ **`gemini-2.5-flash`・思考ON**で構造化JSON → 整形して返す。**ファイルは書かない**。**思考を切らないのはここだけ**——一度きりの生成で、外すと版の取り違えが動画に出る）・`src/app/knowledge/GameRegisterClient.tsx`（2段入力 → 下書き → 編集 → 保存）。`/api/knowledge/save` は `kind` で `chapters` / `game` を分ける。**存在チェックの向きが逆**なのが要点——章保存は「実在するゲームにしか書かない」（404）、ゲーム登録は「既にあれば止める」（409・`overwrite` で明示解除＝`fe-fc` を事故で潰さない）。**`game.json` はサーバ側で組み立てる**（クライアントに生JSONを書かせない）。`knowledgeBuilder` は生成しない（必要なゲームだけ後から手で足す）。
 - **章キャスト表の生成（16・21）**: `src/lib/knowledge-extract.ts`（純関数のみ・`detectCharset`/`decodeHtml`/`htmlToText`/`splitChapters(text, heading)`/`accumulateGroups`/`renderChapterMarkdown`。`node --experimental-strip-types` で直接検証できる＝**型のみ import** を崩さないこと）・`src/app/api/knowledge/extract/route.ts`（`{ game, urls }` → URL取得→章分割→章ごとに `gemini-2.5-flash-lite` で**構造化JSONだけ**抽出。整形は純関数。**ファイルは書かない**）・`src/app/api/knowledge/save/route.ts`（目視確認後に書き出す。**リポジトリ内で唯一の `writeFile`**。slug は `gameDir` が検証し、ゲーム定義が実在しなければ 404。ファイル名は章番号からサーバ側で組み立てる）・`src/app/knowledge/`（`/knowledge` ページ・ゲーム選択つき）。**抽出の形（章見出し・グループ・累積・列・同定文）は `game.json` の `knowledgeBuilder` が決める**（21）。持たないゲームは 422＋UIで無効化＝**汎用の抽出器を作らない**（「どんなゲームの表も読める1つの賢いスキーマ」は存在しない）。落とし穴は `docs/16-knowledge-builder.md` の「実装時に分かったこと」を読むこと（セル区切り・`required`/`propertyOrdering`・職業で敵味方を判断させない・1章の失敗で全滅させない）。
-- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。`/knowledge`（`src/app/knowledge/`）は 16/21 の一度きりの道具。いずれも実況ループから独立した切り分けツールとして**残す**。
+- **暫定確認ページ**: `/capture-test`（`src/app/capture-test/`）は 03/04、`/tts-test`（`src/app/tts-test/`）は 08 の手動確認用ハーネス。`/knowledge`（`src/app/knowledge/`）は一度きりの道具2つ（**① ゲーム登録**＝23、**② 章キャスト表**＝16/21）。いずれも実況ループから独立した切り分けツールとして**残す**。
 
 ### 落とし穴（実測で踏んだ。同じ穴を掘らないこと）
 

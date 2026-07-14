@@ -78,6 +78,42 @@ export interface GameDef {
   knowledgeBuilder?: KnowledgeBuilderDef;
 }
 
+/**
+ * primer 下書きの1項目（ticket 23）。
+ *
+ * `uncertain` が真なら、整形側が行末に `⚠️要確認` を付ける。**LLM に記号や Markdown を
+ * 書かせない**（体裁ブレとプロンプト注入の余地を消す・16 の教訓）。裏取りは開発者が
+ * 一次情報で行う（§8.3）。
+ */
+export interface PrimerItem {
+  text: string;
+  uncertain: boolean;
+}
+
+/**
+ * `primer.md` の下書き（ticket 23・§8.1）。**構造だけ**を LLM に返させ、
+ * 体裁は `renderPrimerMarkdown` が組む。
+ *
+ * 攻略手順の散文はどのフィールドにも入れない。`forbidden` に入れるのは
+ * 「このゲームで何が手順にあたるか」の**例**であって、手順そのものではない。
+ */
+export interface PrimerDraft {
+  /** このゲームの同定（版・発売年・主人公）。後発リメイクと混ぜないための要。 */
+  identity: PrimerItem[];
+  /** 感情が動くポイント（最重要）。 */
+  emotions: PrimerItem[];
+  /** 知っておくべき基本ルール。 */
+  rules: PrimerItem[];
+  /** 当時・背景の語りネタ。 */
+  background: PrimerItem[];
+  /** このゲームで「手順」にあたる＝言ってはいけないことの例。 */
+  forbidden: PrimerItem[];
+  /** 語ってよい「事実」の例（ネタバレは可・§5.2）。 */
+  allowed: PrimerItem[];
+  /** 画面認識上の固有事情（ドット絵で個人を判別できない 等）。 */
+  screenNotes: PrimerItem[];
+}
+
 /** 戦友AIのキャラ設定（最小・緩い形）。詳細はプロンプト組み立て側で扱う。 */
 export interface Persona {
   /** 戦友の呼び名。 */

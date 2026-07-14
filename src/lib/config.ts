@@ -107,6 +107,15 @@ export const KNOWLEDGE_FETCH_TIMEOUT_MS = 15000;
 export const KNOWLEDGE_MAX_TEXT_CHARS = 300000;
 
 /**
+ * ゲーム登録（/knowledge・ticket 23）で参照URL1件から取り込む本文の上限文字数。
+ *
+ * 章キャスト表の抽出は章ごとに分割して投げるので上の 300k で足りるが、primer の下書きは
+ * **全URLぶんを1回の呼び出しに載せる**ため、別の（ずっと小さい）上限が要る。
+ * primer に要るのは「同定のアンカー」であって攻略ページ全文ではない。
+ */
+export const KNOWLEDGE_PRIMER_MAX_TEXT_CHARS = 20000;
+
+/**
  * 章ごとのLLM抽出を何件まで同時に走らせるか。
  * 混雑時に自分で圧をかけないよう控えめにする（1章の失敗が名簿の欠落に直結するため、
  * 速さより完走を優先する）。

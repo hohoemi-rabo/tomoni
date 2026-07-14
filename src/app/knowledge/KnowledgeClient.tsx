@@ -81,7 +81,7 @@ export default function KnowledgeClient({ games }: { games: GameOption[] }) {
       const res = await fetch("/api/knowledge/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ game, chapters }),
+        body: JSON.stringify({ kind: "chapters", game, chapters }),
       });
       const data = (await res.json()) as { saved?: string[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? `保存に失敗(HTTP ${res.status})`);

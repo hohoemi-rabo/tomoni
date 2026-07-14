@@ -1,10 +1,10 @@
-# AS-BUILT — 実装仕様書（2026-07-14 時点・チケット20/21/22 まで）
+# AS-BUILT — 実装仕様書（2026-07-14 時点・チケット23 まで＝Phase 3 完了）
 
 **この文書の位置づけ**：`REQUIREMENTS.md` が「**何を作るか**」（意図・スコープ・強い制約の一次情報）であるのに対し、これは「**いま何が動いているか**」のスナップショット。実装済みのモジュール・API 契約・定数の実値・実測で確定した挙動をまとめる。
 
 - **仕様の判断は `REQUIREMENTS.md` を正とする**。この文書はコードの写像なので、両者が食い違ったら **コードとこの文書のほうが間違っている**（あるいは仕様書の更新漏れ）。方針転換のときは `REQUIREMENTS.md` → コード → この文書 の順で直す。
 - 進捗管理は `docs/00-index.md` のチケットと各 `## Todo`。この文書は進捗表ではない。
-- 対象範囲：**チケット 01〜22＝実装完了ぶん**。23（ゲーム登録）は未着手なので「未実装」として §11 に記す。
+- 対象範囲：**チケット 01〜23＝Phase 1〜3 の全チケット**。起票済みの未着手チケットは無い。
 
 ---
 
@@ -105,6 +105,15 @@ knowledge/<slug>/          slug は [a-z0-9-]+（gameDir が検証する）
 
 > **中身が空のテンプレを置かない。** `buildSystemPrompt` は非空なら注入するので、プレースホルダがそのままキャスト表として AI に渡る。ファイルが無いほうが正しい。
 
+### この2ファイルの作り方（`/knowledge` の2つの道具）
+
+| | 何を作る | 使えるゲーム |
+|---|---|---|
+| **① ゲーム登録**（ticket 23） | `game.json` ＋ `primer.md` の**下書き** | 全部（タイトル・機種・発売時期＋URL があれば） |
+| **② 章キャスト表**（ticket 16/21） | `chapters/chapter-XX.md` の**下書き** | `knowledgeBuilder` を持つゲームだけ |
+
+どちらも **一度きりの取得 → 目視確認・手直し → 保存**。**生成物をそのまま信じない前提の道具**であって、自動化ではない。①が書き出す `game.json` に `knowledgeBuilder` は入らない——章抽出を使いたいゲームだけ、後から手で足す。
+
 ---
 
 ## 5. システムプロンプト（2層構造）
@@ -132,7 +141,7 @@ knowledge/<slug>/          slug は [a-z0-9-]+（gameDir が検証する）
 
 ---
 
-## 6. API 契約（4本）
+## 6. API 契約（5本）
 
 すべて Route Handler（Node.js ランタイム）。POST は本質的に非キャッシュ。エラーは握りつぶさず `{ error: string }` JSON ＋ 適切な status で返す。
 
@@ -151,10 +160,21 @@ knowledge/<slug>/          slug は [a-z0-9-]+（gameDir が検証する）
 - 入力 `{ playthroughId, lines[], chapter? }` → 出力 `{ ok, state }`
 - 実況ログ末尾40件を `gemini-2.5-flash-lite` で**構造化JSON**（`last_session_summary` 必須／`progress` 任意）に要約し、`updatePlaythroughState` で jsonb マージ。**`chapter` は手入力をそのまま反映**、`lost_units` は触らない。
 
-### `POST /api/knowledge/extract` と `/api/knowledge/save` — 章キャスト表の生成（一度きりの道具）
-- 入力はどちらも `{ game, ... }`。**ゲーム定義の `knowledgeBuilder` が抽出スキーマ・グループ・章見出し・同定文を決める**（ticket 21）。持たないゲームは extract が **422** を返し、UI 側も選択肢に「未対応」と出して実行を止める。
-- extract：URL（最大3件）取得 → **文字コード判定**（誤ると LLM が幻覚を返す。実測で Shift-JIS を UTF-8 で読んで「GBA版」と答えた）→ タグ除去 → 章分割 → 章ごとに `flash-lite` で**構造化JSONだけ**抽出（同時実行2・リトライ5回/2秒起点）。**整形は純関数**（`renderChapterMarkdown` がグループ定義から見出しを組む）。**ファイルは書かない**。
-- save：**目視確認後**に書き出す。**リポジトリ内で唯一の `writeFile`**。slug は `gameDir` が `[a-z0-9-]+` で検証し、**実在するゲーム定義が無ければ 404**（`knowledge/` にゴミのディレクトリを作らせない）。ファイル名は章番号からサーバ側で組み立てる（クライアントの文字列を使わない）。
+### `POST /api/knowledge/extract` — 章キャスト表の下書き（一度きりの道具・ticket 16/21）
+- 入力 `{ game, urls[] }`。**ゲーム定義の `knowledgeBuilder` が抽出スキーマ・グループ・章見出し・同定文を決める**（ticket 21）。持たないゲームは **422** を返し、UI 側も選択肢に「未対応」と出して実行を止める。
+- URL（最大3件）取得 → **文字コード判定**（誤ると LLM が幻覚を返す。実測で Shift-JIS を UTF-8 で読んで「GBA版」と答えた）→ タグ除去 → 章分割 → 章ごとに `flash-lite` で**構造化JSONだけ**抽出（同時実行2・リトライ5回/2秒起点）。**整形は純関数**（`renderChapterMarkdown` がグループ定義から見出しを組む）。**ファイルは書かない**。
+
+### `POST /api/knowledge/register` — primer の下書き（ゲーム登録・ticket 23）
+- 入力 `{ title, platform, releasedAt, urls[] }` → 出力 `{ slug, game: {title, version, progressLabel, progressPlaceholder, lostLabel}, primer }`。**ファイルは書かない**。
+- URL 取得（extract と同じ文字コード判定・本文は `KNOWLEDGE_PRIMER_MAX_TEXT_CHARS`＝20k で切る。**全URLぶんを1回の呼び出しに載せる**ので章抽出とは別の上限が要る）→ **`gemini-2.5-flash`・思考ON**で `PrimerDraft`（§8.1 の6セクション）＋ `game.json` 用の呼び方を**構造化JSONだけ**生成 → `renderPrimerMarkdown`（純関数）で整形。
+  - **flash を思考ONで使う**のはここだけ。一度きりの生成で、外すと**版の取り違え**がそのまま動画に出る。テンポ制約が無いので `thinkingBudget: 0` を付けない。
+  - **`⚠️要確認` は純関数が付ける**（`uncertain: true` の行末）。LLM に記号も Markdown も書かせない。
+  - 「概念が無いもの」は空文字で返させ、サーバ側で落とす（`lostLabel` が空＝ロストの概念が無いゲーム→`game.json` から省く）。実測: マリオでは正しく空になった。
+
+### `POST /api/knowledge/save` — **目視確認後**の書き出し（**リポジトリ内で唯一の `writeFile`**）
+- `kind` で2種類を分ける。slug はどちらも `gameDir` が `[a-z0-9-]+` で検証し、ファイル名はサーバ側で組み立てる（クライアントの文字列をパスに使わない）。
+- `{ kind: "chapters", game, chapters[] }` … 章キャスト表。**実在するゲーム定義が無ければ 404**（`knowledge/` にゴミのディレクトリを作らせない）。
+- `{ kind: "game", game, title, version?, …, primer, overwrite? }` … ゲーム登録。**存在チェックの向きが逆**——こちらは新しいディレクトリを作る側なので、**既に `knowledge/<slug>/` があれば 409** で止め、`overwrite: true` を明示したときだけ上書きする（`fe-fc` を事故で潰さない）。**`game.json` はサーバ側で組み立てる**（クライアントに生JSONを書かせない＝壊れた定義や `knowledgeBuilder` の混入を受け入れない）。
 
 ---
 
@@ -208,6 +228,8 @@ knowledge/<slug>/          slug は [a-z0-9-]+（gameDir が検証する）
 | `END_SESSION_MAX_LINES` | 40 | 要約に渡すログ件数 |
 | `KNOWLEDGE_EXTRACT_CONCURRENCY` | 2 | 章抽出の同時実行 |
 | `KNOWLEDGE_EXTRACT_RETRIES` / `BASE_DELAY_MS` | 5 / 2000 | **既定（3回・500ms）では 503 に耐えられない**（実測） |
+| `KNOWLEDGE_MAX_TEXT_CHARS` | 300000 | 章抽出でURL1件から取り込む本文上限 |
+| `KNOWLEDGE_PRIMER_MAX_TEXT_CHARS` | 20000 | **ゲーム登録**でURL1件から取り込む本文上限（1回の呼び出しに全URLぶんを載せるので別枠） |
 | `withRetry` の既定 | 3回 / 500ms 起点 | 指数バックオフ |
 
 ---
@@ -219,18 +241,19 @@ knowledge/<slug>/          slug は [a-z0-9-]+（gameDir が検証する）
 | `/` | Server Component（`force-dynamic`） | プレイスルー一覧・新規作成（Server Action・**`listGames()` からゲームを選ぶ**。選ぶとタイトル/バージョンの既定値が入る＝上書き可）・削除（確認あり・cascade）・`/knowledge` への導線 |
 | `/session/[id]` | Server + `SessionClient`（`'use client'`） | **本体**。映像プレビュー＋カメラ選択／自動実況 ON・OFF／手動「今の場面について話して」／ストリーミング表示／読み上げ ON・OFF・ボイス選択／「押して話す」（STT）／セッション終了して保存（進捗入力・**ラベルは `game.json` から**） |
 | `/session/[id]`（録画モード） | 同ファイル内オーバーレイ | `fixed inset-0` の全画面。単色背景に**AI発言だけ**を中央大表示。文字サイズ段階切替・Esc で解除。**ループは止めない**（OBS で撮る前提） |
-| `/knowledge` | 一度きりの道具 | 参照URL → 章キャスト表の下書き → **目視確認** → 保存 |
+| `/knowledge` | 一度きりの道具（2つ） | **① ゲーム登録**：タイトル・機種・発売時期＋参照URL → `game.json` ＋ `primer.md` の下書き → **目視確認・手直し** → 保存（既存 slug は 409 で止まる）。**② 章キャスト表**：参照URL → 章ごとの名簿の下書き → **目視確認** → 保存（`knowledgeBuilder` を持つゲームだけ） |
 | `/capture-test` / `/tts-test` | 切り分け用ハーネス | 03/04 と 08 の手動確認用。実況ループから独立 |
 
 ---
 
 ## 10. 検証手段（テストフレームワークが無いので、何で確かめたかを残す）
 
-- **純粋なサーバ側ロジック**（`prompt.ts` / `sentence.ts` / `knowledge-extract.ts` など型のみ import のもの）：`node --experimental-strip-types <file>.mts` で実モジュールを直接実行。**依存を使う検証スクリプトはプロジェクト直下に置いて実行し、終わったら消す**（scratchpad からだと `node_modules` を解決できない）。
+- **純粋なサーバ側ロジック**（`prompt.ts` / `sentence.ts` / `knowledge-extract.ts` / `primer-render.ts` など型のみ import のもの）：`node --experimental-strip-types <file>.mts` で実モジュールを直接実行。**依存を使う検証スクリプトはプロジェクト直下に置いて実行し、終わったら消す**（scratchpad からだと `node_modules` を解決できない）。
 - **API Route**：`npm run dev` 後に `curl` で疎通・異常系。検証用 JPEG は `curl https://picsum.photos/256.jpg`（1x1 の極小 JPEG は Gemini が弾く）。
 - **DB**：Supabase MCP（`execute_sql`）。**ダミー行は必ず消す。`WHERE` 無しの `UPDATE`/`DELETE` は実行しない。**
 - **ブラウザ依存（映像取り込み・自動ループ・読み上げ）**：`.claude/skills/verify/SKILL.md` の手順で Playwright の偽カメラを使い**無人で駆動**できる。タイミング系を触ったら `git stash` で**変更前と A/B を取る**（「直った」より先に「壊れていたことを検出できるハーネスだ」と示す）。`--autoplay-policy=no-user-gesture-required` を忘れると mp3 が鳴らず、**読み上げが一瞬で終わったように見えて誤判定する**。
 - **プロンプトの回帰**：`buildSystemPrompt` を組んで Gemini に投げ、①版の同定（FC版1990・三すくみ否定）②ロストを重く悼むか ③加入手順を断りつつ固有名（事実）は語るか、の3点を確認する。
+- **ゲーム登録（23）**：**実在の別ゲームを1本通して登録し、目視で確かめる**——攻略手順の散文が混ざっていないか／版が取り違えられていないか／`⚠️要確認` が付くか。`/api/knowledge/save` に `game: "fe-fc"` を `overwrite` 無しで投げ、**409 で止まること**も見る。**検証で作った `knowledge/<slug>/` は必ず消す**（本採用しないものを残さない）。ticket 23 は『スーパーマリオブラザーズ』（FC・1985）で確認済み・削除済み。
 
 > `npm run dev` 起動中に `npm run build` すると `.next` が壊れて dev サーバが 500 を返す。build するときは dev を止める。
 
@@ -246,9 +269,11 @@ knowledge/<slug>/          slug は [a-z0-9-]+（gameDir が検証する）
 - ✅ **ネタバレはしてよい**（14 で撤廃）。線引きは「事実は語る、手順は言わない」。
 - ✅ **参照サイトからの取得はしてよい**（16 で撤廃）。`/knowledge` での名簿化のための一度きりに限る。実況ループからは取得しない。
 - ✅ **AIから質問してよい**（22・**実装済み**）。禁じるのは**質問の形をした手順誘導**（「シーダで話しかけてみたら?」）と、返事を強要する振る舞い（催促・蒸し返し）。質問は答えなくても成立する軽い投げかけで、90秒で自分から切り上げる。
-- ✅ **ゲームの差し替えはしてよい**（20 で撤廃・**実装済み**）。`knowledge/<slug>/` に `game.json` と `primer.md` を置けば、**`src/` を1行も触らずに**そのゲームのプレイスルーを作れる（ダミーゲームで A/B 検証済み：同じコード・同じ画像で、プレイスルーの `game` を変えると注入されるプライマーが切り替わる）。
+- ✅ **ゲームの差し替えはしてよい**（20 で撤廃・**実装済み**）。`knowledge/<slug>/` に `game.json` と `primer.md` を置けば、**`src/` を1行も触らずに**そのゲームのプレイスルーを作れる（実ゲームで検証済み：『スーパーマリオブラザーズ』を `/knowledge` から登録し、そのまま実況が成立した）。
+- ✅ **ゲーム登録のためのURL取得もしてよい**（23・**実装済み**）。16 と同じ条件——**一度きり・目視確認してから保存・実況ループからは取得しない**——に限る。`/knowledge` が作るのは**下書き**で、「AIが学習する」仕組みではない。生成された primer は**そのまま信じない**（版の取り違えを含みうる。`⚠️要確認` は開発者が一次情報で裏取りする）。
 
 ### 未実装（＝いま無いもの。先読みで作らないこと）
-- **チケット23（ゲーム登録）**：`/knowledge` からタイトル・機種・URL を入れて `game.json` ＋ `primer.md` の下書きを作る流れ。**現状 primer は手書き**（`/knowledge` にあるのは章キャスト表の生成だけ）。
+- **起票済みの未着手チケットは無い**（Phase 1〜3 完了）。新たな要件は、まず `docs/` にチケットを起こしてから着手する。
 - テストフレームワーク（未導入）。`messages` テーブルへの書き込み（テーブルはあるが使っていない）。
+- **`knowledgeBuilder` の生成**（＝ゲーム登録は章抽出の設定まで書かない）。必要なゲームだけ `game.json` に手で足す。「どんなゲームの表も読める1つの賢い抽出器」は作らない（21 の判断を維持）。
 - 実機での通し確認（OBS仮想カメラ→自動実況→読み上げ→録画モード→STT）と、発話間隔 30〜60秒が実プレイで適切かの詰め（18・19 の Todo に残っている）。

@@ -28,14 +28,23 @@
 
 ## Todo
 
-- [ ] `src/lib/primer-render.ts`（新規・純関数）：構造化JSON → §8.1 の体裁の Markdown
-- [ ] `src/app/api/knowledge/register/route.ts`（新規）：`{ title, platform, releasedAt, urls[] }` → 取得（`KNOWLEDGE_FETCH_TIMEOUT_MS` / `KNOWLEDGE_MAX_TEXT_CHARS` を流用）→ `gemini-2.5-flash-lite` で構造化JSON（`required` / `propertyOrdering` を明示・16 の教訓）→ `primer-render` で整形して返す。**ファイルは書かない**
-- [ ] `/api/knowledge/save`：`game.json` ＋ `primer.md` の保存に対応（slug 検証・既存ディレクトリの上書き確認フラグ）
-- [ ] `src/app/knowledge/`：ゲーム登録UI（2段入力 → 下書き → **編集可能なテキストエリア** → 保存）。章キャスト表の抽出UIは、章構造を持つゲーム（`knowledgeBuilder` あり）でのみ出す
-- [ ] 検証：`node --experimental-strip-types` で `primer-render` の体裁（§8.1 の見出し構成・`⚠️要確認` の付き方）を確認
-- [ ] 検証：実在の別ゲーム1本を登録して primer を生成し、**目視で**「攻略手順が混ざっていないか」「版が取り違えられていないか」を確認。**確認したら消す**（本採用しないなら `knowledge/` に残さない）
-- [ ] 検証：`fe-fc` の既存 primer を**上書きしそうになったら止まる**こと
-- [ ] `knowledge/fe-fc/README.md` と `AS-BUILT.md`（§4・§6・§9・§11）を更新
+- [×] `src/lib/primer-render.ts`（新規・純関数）：構造化JSON → §8.1 の体裁の Markdown
+- [×] `src/app/api/knowledge/register/route.ts`（新規）：`{ title, platform, releasedAt, urls[] }` → 取得（`KNOWLEDGE_FETCH_TIMEOUT_MS` / `KNOWLEDGE_PRIMER_MAX_TEXT_CHARS` を流用）→ **`gemini-2.5-flash`（思考ON）**で構造化JSON（`required` / `propertyOrdering` を明示・16 の教訓）→ `primer-render` で整形して返す。**ファイルは書かない**
+- [×] `/api/knowledge/save`：`game.json` ＋ `primer.md` の保存に対応（slug 検証・既存ディレクトリの上書き確認フラグ）
+- [×] `src/app/knowledge/`：ゲーム登録UI（2段入力 → 下書き → **編集可能なテキストエリア** → 保存）。章キャスト表の抽出UIは、章構造を持つゲーム（`knowledgeBuilder` あり）でのみ出す
+- [×] 検証：`node --experimental-strip-types` で `primer-render` の体裁（§8.1 の見出し構成・`⚠️要確認` の付き方）を確認
+- [×] 検証：実在の別ゲーム1本を登録して primer を生成し、**目視で**「攻略手順が混ざっていないか」「版が取り違えられていないか」を確認。**確認したら消す**（本採用しないなら `knowledge/` に残さない）
+- [×] 検証：`fe-fc` の既存 primer を**上書きしそうになったら止まる**こと
+- [×] `knowledge/fe-fc/README.md` と `AS-BUILT.md`（§4・§6・§9・§11）を更新
+
+## 実装時に分かったこと（次に触る人へ）
+
+- **モデルは `gemini-2.5-flash`・思考ON にした**（Todo の当初案 `flash-lite` から変更）。登録は**一度きりの生成**で、外すと版の取り違えがそのまま動画に出る。実況と違ってテンポ制約が無いので、`thinkingConfig: { thinkingBudget: 0 }` を付けない。1回の呼び出しなのでコストも問題にならない。
+- **本文の上限は章抽出と別に持つ**（`KNOWLEDGE_PRIMER_MAX_TEXT_CHARS = 20000`）。章抽出は章ごとに分割して投げるので 300k で足りるが、登録は**全URLぶんを1回の呼び出しに載せる**。primer に要るのは同定のアンカーであって攻略ページ全文ではない。
+- **`writeFile` は `/api/knowledge/save` に集約したまま**にした（新ルートを作らない）。`kind` で `chapters` / `game` を分ける。**存在チェックの向きが逆**なのが要点——章保存は「実在するゲームにしか書かない」（404）、ゲーム登録は「既にあれば止める」（409・`overwrite` で明示的に解除）。
+- **`game.json` はサーバ側で組み立てる。** クライアントに生JSONを編集させると、壊れた定義や `knowledgeBuilder` の混入をそのまま受け入れてしまう。フォームの各値を個別に検証し、**空文字は落とす**（`lostLabel` を落とす＝ロストの概念が無い・§8.0）。実測でも『スーパーマリオブラザーズ』は `lostLabel` が空で返り、正しく省かれた。
+- **`⚠️要確認` は純関数が付ける**（`uncertain: true` の行末）。LLM に記号を書かせない。ただし**モデルは自信過剰で、付く数は少なめ**（マリオでは1件だけ）。下書きは「確認済み」ではないという前提を UI 側の警告文で担保している。
+- 検証は『スーパーマリオブラザーズ』（FC・1985）で行った。**章構造もロストの概念も無いゲーム**で、`progressLabel: "現在のステージ"` / `progressPlaceholder: "例: ワールド1-3"` が出て、実況も成立した（＝汎用化の実ゲーム検証を1本兼ねた）。**検証後に `knowledge/smb-fc/` は削除済み。**
 
 ## 完了条件
 
