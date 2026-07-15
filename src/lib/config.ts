@@ -31,14 +31,14 @@ export const FRAME_DIFF_THRESHOLD = 0.02;
  *
  * 喋るほど課金される（画像送信＋TTS）。長めから詰める。
  */
-export const SPEAK_INTERVAL_MIN_MS = 30000;
-export const SPEAK_INTERVAL_MAX_MS = 60000;
+export const SPEAK_INTERVAL_MIN_MS = 45000;
+export const SPEAK_INTERVAL_MAX_MS = 90000;
 
 /**
  * 質問ターンを引く確率（0〜1・ticket 22）。話しかけが無いときだけ抽選する。
  * 高すぎると尋問になる。直前が質問だったターンは抽選自体をしない（連続質問の禁止）。
  */
-export const QUESTION_TURN_PROBABILITY = 0.3;
+export const QUESTION_TURN_PROBABILITY = 0.15;
 
 /**
  * 質問したあと、返事をどれだけ待つか（ミリ秒・ticket 22）。**質問の読み上げが終わって
@@ -69,6 +69,12 @@ export const RECENT_LINES_KEEP = 8;
 
 /** 既定の読み上げボイス（Chirp3-HD・日本語）。調整可能。 */
 export const DEFAULT_TTS_VOICE = "ja-JP-Chirp3-HD-Aoede";
+
+/**
+ * 読み上げの速さ（Cloud TTS `audioConfig.speakingRate`・1.0 が等倍）。
+ * 実プレイで「AIの話すスピードがゆっくり」と感じたので少し速めた。0.25〜2.0 で調整可能。
+ */
+export const TTS_SPEAKING_RATE = 1.2;
 
 /**
  * ボイス選択UI用の候補（Chirp3-HD・ja-JP）。`DEFAULT_TTS_VOICE` を含む。

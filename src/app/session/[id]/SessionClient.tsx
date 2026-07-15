@@ -165,11 +165,22 @@ export default function SessionClient({
     [playthroughId],
   );
 
+  // プレイヤーが STT で話している最中か（門番用・下の stt から毎レンダー更新）。
+  const sttListeningRef = useRef(false);
+
   // 読み上げが鳴り終わるまで、自動ループの発話（実況・自発発話とも）を待たせる。
   // 撃つと onSend 冒頭の reset() で前の発言が途中で切れる。SLGは1手ごとに画面が
   // 動くので、実況側にこのガードが無いと台詞がほぼ毎回途中で切り落とされる。
+  //
+  // **プレイヤーが話している間も黙る（ticket 22 の穴）。** listening を見ないと、返事待ちの
+  // タイムアウト（giveup）や通常の実況が、回答の途中に被さって喋り出す（実測で「途中で
+  // 切られた」）。この門番は返事待ちの計測より手前にあるので、話している間はタイムアウトの
+  // カウントも進まない（話し終えて確定テキストが出れば triggerNow が返事待ちを解除する）。
   const canSpeak = useCallback(
-    () => !ttsRef.current.speaking && ttsRef.current.queueLength === 0,
+    () =>
+      !ttsRef.current.speaking &&
+      ttsRef.current.queueLength === 0 &&
+      !sttListeningRef.current,
     [],
   );
 
@@ -187,6 +198,7 @@ export default function SessionClient({
       auto.triggerNow(t); // 手動トリガー経由で発話を添えて送信。
     },
   });
+  sttListeningRef.current = stt.listening;
 
   return (
     <div className="flex flex-col gap-5">

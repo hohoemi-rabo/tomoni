@@ -1,4 +1,4 @@
-import { DEFAULT_TTS_VOICE } from "@/lib/config";
+import { DEFAULT_TTS_VOICE, TTS_SPEAKING_RATE } from "@/lib/config";
 import { getGoogleTtsApiKey } from "@/lib/env";
 import { withRetry } from "@/lib/retry";
 
@@ -67,7 +67,7 @@ export async function POST(req: Request): Promise<Response> {
         body: JSON.stringify({
           input: { text },
           voice: { languageCode: languageCodeOf(voice), name: voice },
-          audioConfig: { audioEncoding: "MP3" }, // Chirp3-HD は最小設定で。
+          audioConfig: { audioEncoding: "MP3", speakingRate: TTS_SPEAKING_RATE },
         }),
       });
       if (!res.ok) {
